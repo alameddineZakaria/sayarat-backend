@@ -10,7 +10,7 @@ const swaggerSpec = require("./config/swagger");
 const sequelize = require('./config/db'); // Sequelize instance
  
 const app = express();
-const PORT = process.env.PORT || 9000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
