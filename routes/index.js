@@ -12,5 +12,6 @@ router.use('/ai-analyze-vehicle', require('./ai-analyze-vehicle'));
 router.use('/photo-tagger', require('./photo-tagger'));
 router.use('/vin/decode', require('./auto-dev-vin-decode'));
 router.use('/carfaxdeals-history', require('./carfaxdeals-history'));
-
+router.use('/carsxe', require('./carsxe-history'));
+router.use('/check-expiring', require('./check-expiring-offers'));
 module.exports = router;

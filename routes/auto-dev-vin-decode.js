@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const sequelize = require('../config/db'); // available if you want DB later
-const fetch = require('node-fetch');
-
+ 
 // Safe fetch wrapper for CommonJS (node-fetch v3+)
 // const fetch = (...args) =>
 //   import('node-fetch').then(({ default: fetch }) => fetch(...args));

@@ -1,6 +1,5 @@
 // routes/ai-analyze-vehicle.js
 const express = require('express');
-const fetch = require('node-fetch');
 
 const router = express.Router();
 
@@ -33,6 +32,7 @@ const router = express.Router();
  *               imageUrl:
  *                 type: string
  *                 description: URL of the vehicle image (required for analyze_features)
+ *                 example: "https://img.freepik.com/free-psd/black-isolated-car_23-2151852894.jpg"
  *               make:
  *                 type: string
  *               model:
@@ -81,8 +81,8 @@ router.post('/', async (req, res) => {
   try {
     const { imageUrl, make, model, year, mileage, action } = req.body;
 
-    const gatewayApiKey = process.env.GATEWAY_API_KEY; 
-    if (!gatewayApiKey) { 
+    const gatewayApiKey = process.env.GATEWAY_API_KEY;
+    if (!gatewayApiKey) {
       throw new Error('API Gateway key not configured');
     }
 
@@ -159,7 +159,8 @@ Return JSON:
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || 'AI request failed');
+    console.log('data:', data);
+    if (!response.ok) throw new Error(data.error || 'AI request failed');
 
     const content = data.choices?.[0]?.message?.content || '';
     let result;
@@ -172,7 +173,6 @@ Return JSON:
 
     res.json({ success: true, action, result });
   } catch (error) {
-    console.error('AI analyze vehicle error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

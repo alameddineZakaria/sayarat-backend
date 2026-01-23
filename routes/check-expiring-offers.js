@@ -2,40 +2,115 @@ const express = require("express");
 const router = express.Router();
 const { Op } = require("sequelize");
 const sequelize = require("../config/db"); // your sequelize instance
-const { Offer, User, Vehicle, PushToken, OfferNotification } = require("../models");
+const { Offers, Users, PushTokens, OfferNotifications,Vehicles } = require("../models");
+const cors = require('cors');
 
 // Middleware to parse JSON
+router.use(cors());
 router.use(express.json());
+
 
 /**
  * @swagger
- * /check-expiring:
+ * /api/check-expiring:
  *   post:
  *     summary: Check and notify about expiring and expired offers
  *     description: |
- *       Finds offers expiring within 24 hours and offers already expired.
- *       Sends push, email, and in-app notifications and updates offer status.
+ *       Finds offers that are expiring within 24 hours and offers that have already expired.
+ *       Sends push notifications, emails, and in-app notifications to buyers and sellers.
+ *       Updates offer statuses (marks reminders sent or sets expired) in the database.
  *     tags:
- *       - Offers
+ *       - Check expiring offers
  *     responses:
  *       200:
- *         description: Notifications sent successfully
+ *         description: Successfully processed expiring and expired offers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: "2026-01-23T15:30:00.000Z"
+ *                 remindersCount:
+ *                   type: integer
+ *                   example: 3
+ *                 expiredCount:
+ *                   type: integer
+ *                   example: 2
+ *                 reminders:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       offerId:
+ *                         type: integer
+ *                         example: 101
+ *                       hoursLeft:
+ *                         type: integer
+ *                         example: 12
+ *                       buyerPush:
+ *                         type: integer
+ *                         example: 1
+ *                       sellerPush:
+ *                         type: integer
+ *                         example: 1
+ *                       buyerEmail:
+ *                         type: boolean
+ *                         example: true
+ *                       sellerEmail:
+ *                         type: boolean
+ *                         example: true
+ *                 expired:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       offerId:
+ *                         type: integer
+ *                         example: 99
+ *                       previousStatus:
+ *                         type: string
+ *                         example: "pending"
+ *                       buyerPush:
+ *                         type: integer
+ *                         example: 1
+ *                       sellerPush:
+ *                         type: integer
+ *                         example: 1
  *       500:
- *         description: Server error
+ *         description: Server error while processing offers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Database connection failed"
  */
+
+
 router.post("/", async (req, res) => {
   try {
     const now = new Date();
     const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
     // ---------------- EXPIRING OFFERS ----------------
-    const expiringOffers = await Offer.findAll({
+    const expiringOffers = await Offers.findAll({
       where: {
         status: { [Op.in]: ["pending", "countered"] },
         expires_at: { [Op.gt]: now, [Op.lte]: in24Hours },
         expiry_reminder_sent: false,
       },
-      include: [User, Vehicle], // include buyer, seller and vehicle info if associations exist
+      include: [Users, Vehicles], // include buyer, seller and vehicle info if associations exist
     });
 
     const reminderResults = [];
@@ -84,7 +159,7 @@ router.post("/", async (req, res) => {
     }
 
     // ---------------- EXPIRED OFFERS ----------------
-    const expiredOffers = await Offer.findAll({
+    const expiredOffers = await Offers.findAll({
       where: {
         status: { [Op.in]: ["pending", "countered"] },
         expires_at: { [Op.lt]: now },
@@ -144,7 +219,7 @@ router.post("/", async (req, res) => {
 // Implement sendPush, sendEmail, createInAppNotification with Sequelize queries if needed
 async function sendPush(userId, title, body, offerId) {
   // Get tokens from PushToken table
-  const tokens = await PushToken.findAll({ where: { user_id: userId, is_active: true } });
+  const tokens = await PushTokens.findAll({ where: { user_id: userId, is_active: true } });
   if (!tokens.length) return { sent: 0 };
 
   const messages = tokens.map(t => ({
@@ -166,7 +241,6 @@ async function sendPush(userId, title, body, offerId) {
   const result = await pushRes.json();
   return { sent: result.data?.filter(r => r.status === "ok").length || 0 };
 }
-
 async function sendEmail(userId, subject, body) {
   const user = await User.findByPk(userId);
   if (!user?.email) return { sent: false };
@@ -193,7 +267,7 @@ async function sendEmail(userId, subject, body) {
 }
 
 async function createInAppNotification(userId, offerId, title, body, amount) {
-  await OfferNotification.create({
+  await OfferNotifications.create({
     user_id: userId,
     offer_id: offerId,
     title,

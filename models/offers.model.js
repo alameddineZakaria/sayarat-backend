@@ -85,6 +85,10 @@ module.exports = (sequelize, DataTypes) => {
     tableName: "offers",
     timestamps: false,
   });
-
+  Offers.associate = (models) => {
+    Offers.belongsTo(models.Users, { foreignKey: 'buyer_id', as: 'buyer' });
+    Offers.belongsTo(models.Users, { foreignKey: 'seller_id', as: 'seller' });
+    Offers.belongsTo(models.Vehicles, { foreignKey: 'vehicle_id', as: 'vehicle' });
+  };
   return Offers;
 };
