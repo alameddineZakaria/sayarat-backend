@@ -9,5 +9,6 @@ router.use('/admin-clear-chat', require('./admin-clear-chat'));
 router.use('/function', require('./generic-query-runner'));
 router.use('/admin-messages', require('./admin-messages'));
 router.use('/ai-analyze-vehicle', require('./ai-analyze-vehicle'));
+router.use('/photo-tagger', require('./photo-tagger'));
 
 module.exports = router;
