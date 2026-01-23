@@ -10,5 +10,7 @@ router.use('/function', require('./generic-query-runner'));
 router.use('/admin-messages', require('./admin-messages'));
 router.use('/ai-analyze-vehicle', require('./ai-analyze-vehicle'));
 router.use('/photo-tagger', require('./photo-tagger'));
+router.use('/vin/decode', require('./auto-dev-vin-decode'));
+router.use('/carfaxdeals-history', require('./carfaxdeals-history'));
 
 module.exports = router;
