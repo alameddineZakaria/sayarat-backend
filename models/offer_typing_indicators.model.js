@@ -1,16 +1,19 @@
 module.exports = (sequelize, DataTypes) => {
   const OfferTypingIndicators = sequelize.define("OfferTypingIndicators", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     offer_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     user_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     is_typing: {
       type: DataTypes.BOOLEAN,

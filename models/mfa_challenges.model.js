@@ -1,12 +1,14 @@
 module.exports = (sequelize, DataTypes) => {
   const MfaChallenges = sequelize.define("MfaChallenges", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     factor_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     created_at: {
       type: DataTypes.DATE,
@@ -17,8 +19,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     ip_address: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     otp_code: {
       type: DataTypes.TEXT,

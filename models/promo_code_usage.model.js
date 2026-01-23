@@ -1,16 +1,19 @@
 module.exports = (sequelize, DataTypes) => {
   const PromoCodeUsage = sequelize.define("PromoCodeUsage", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     promo_code_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     user_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     purchase_id: {
       type: DataTypes.STRING,

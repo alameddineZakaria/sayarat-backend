@@ -1,16 +1,19 @@
 module.exports = (sequelize, DataTypes) => {
   const OauthConsents = sequelize.define("OauthConsents", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     user_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     client_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     scopes: {
       type: DataTypes.TEXT,

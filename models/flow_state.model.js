@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const FlowState = sequelize.define("FlowState", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     user_id: {
       type: DataTypes.STRING,
@@ -13,8 +14,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     code_challenge_method: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     code_challenge: {
       type: DataTypes.TEXT,

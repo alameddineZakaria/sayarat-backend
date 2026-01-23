@@ -5,12 +5,14 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     subscription_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     entity: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     filters: {
       type: DataTypes.FLOAT,
@@ -21,8 +23,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     claims_role: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     created_at: {
       type: DataTypes.DATE,

@@ -1,16 +1,18 @@
 module.exports = (sequelize, DataTypes) => {
   const SubscriptionEvents = sequelize.define("SubscriptionEvents", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     subscription_id: {
       type: DataTypes.STRING,
       allowNull: true,
     },
     user_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     event_type: {
       type: DataTypes.TEXT,

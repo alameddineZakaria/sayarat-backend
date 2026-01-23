@@ -5,8 +5,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     payload: {
       type: DataTypes.JSON,
@@ -17,8 +18,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     ip_address: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
   }, {
     tableName: "audit_log_entries",

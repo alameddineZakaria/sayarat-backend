@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const Objects = sequelize.define("Objects", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     bucket_id: {
       type: DataTypes.TEXT,

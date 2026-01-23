@@ -1,12 +1,14 @@
 module.exports = (sequelize, DataTypes) => {
   const ScheduledAdminActions = sequelize.define("ScheduledAdminActions", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     admin_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     action_type: {
       type: DataTypes.TEXT,

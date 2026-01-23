@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const S3MultipartUploads = sequelize.define("S3MultipartUploads", {
     id: {
-      type: DataTypes.TEXT,
-      allowNull: false,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     in_progress_size: {
       type: DataTypes.BIGINT,

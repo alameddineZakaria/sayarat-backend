@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const Inspectors = sequelize.define("Inspectors", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     name: {
       type: DataTypes.TEXT,

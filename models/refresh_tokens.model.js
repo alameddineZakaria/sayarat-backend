@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const RefreshTokens = sequelize.define("RefreshTokens", {
     instance_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     id: {
       type: DataTypes.BIGINT,

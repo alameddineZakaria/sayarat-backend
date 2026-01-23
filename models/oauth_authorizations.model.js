@@ -1,16 +1,18 @@
 module.exports = (sequelize, DataTypes) => {
   const OauthAuthorizations = sequelize.define("OauthAuthorizations", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     authorization_id: {
       type: DataTypes.TEXT,
       allowNull: false,
     },
     client_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     user_id: {
       type: DataTypes.STRING,
@@ -41,12 +43,14 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     response_type: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     status: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     authorization_code: {
       type: DataTypes.TEXT,

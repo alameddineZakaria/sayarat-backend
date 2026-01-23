@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const ListingBoosts = sequelize.define("ListingBoosts", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     vehicle_id: {
       type: DataTypes.STRING,
@@ -13,8 +14,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     user_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     boost_type: {
       type: DataTypes.TEXT,

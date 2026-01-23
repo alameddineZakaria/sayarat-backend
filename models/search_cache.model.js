@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const SearchCache = sequelize.define("SearchCache", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     cache_key: {
       type: DataTypes.TEXT,

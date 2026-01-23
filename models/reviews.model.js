@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const Reviews = sequelize.define("Reviews", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     reviewer_id: {
       type: DataTypes.STRING,

@@ -1,16 +1,18 @@
 module.exports = (sequelize, DataTypes) => {
   const OauthClients = sequelize.define("OauthClients", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     client_secret_hash: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
     registration_type: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     redirect_uris: {
       type: DataTypes.TEXT,
@@ -45,8 +47,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     client_type: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
   }, {
     tableName: "oauth_clients",

@@ -5,8 +5,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     type: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     format: {
       type: DataTypes.TEXT,
@@ -21,8 +22,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     deleted_at: {
       type: DataTypes.DATE,

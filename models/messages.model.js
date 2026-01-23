@@ -29,8 +29,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
   }, {
     tableName: "messages",

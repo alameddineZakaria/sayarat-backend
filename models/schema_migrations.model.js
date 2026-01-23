@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const SchemaMigrations = sequelize.define("SchemaMigrations", {
     version: {
-      type: DataTypes.BIGINT,
-      allowNull: false,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     inserted_at: {
       type: DataTypes.DATE,

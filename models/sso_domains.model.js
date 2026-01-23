@@ -1,12 +1,14 @@
 module.exports = (sequelize, DataTypes) => {
   const SsoDomains = sequelize.define("SsoDomains", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     sso_provider_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     domain: {
       type: DataTypes.TEXT,

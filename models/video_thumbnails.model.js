@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const VideoThumbnails = sequelize.define("VideoThumbnails", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     vehicle_id: {
       type: DataTypes.STRING,

@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const TestDriveBookings = sequelize.define("TestDriveBookings", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     vehicle_id: {
       type: DataTypes.STRING,
@@ -13,20 +14,23 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     user_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     seller_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     scheduled_date: {
       type: DataTypes.DATEONLY,
       allowNull: false,
     },
     scheduled_time: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     duration_minutes: {
       type: DataTypes.INTEGER,

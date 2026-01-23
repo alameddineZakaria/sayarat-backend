@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const MfaAmrClaims = sequelize.define("MfaAmrClaims", {
     session_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     created_at: {
       type: DataTypes.DATE,
@@ -17,8 +18,9 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
   }, {
     tableName: "mfa_amr_claims",

@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const TypingIndicators = sequelize.define("TypingIndicators", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     conversation_id: {
       type: DataTypes.STRING,

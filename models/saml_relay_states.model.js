@@ -1,12 +1,14 @@
 module.exports = (sequelize, DataTypes) => {
   const SamlRelayStates = sequelize.define("SamlRelayStates", {
     id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     sso_provider_id: {
-      type: DataTypes.STRING,
-      allowNull: false,
+         type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     request_id: {
       type: DataTypes.TEXT,

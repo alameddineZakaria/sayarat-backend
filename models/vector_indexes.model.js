@@ -1,8 +1,9 @@
 module.exports = (sequelize, DataTypes) => {
   const VectorIndexes = sequelize.define("VectorIndexes", {
     id: {
-      type: DataTypes.TEXT,
-      allowNull: false,
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      primaryKey: true,
     },
     name: {
       type: DataTypes.TEXT,
