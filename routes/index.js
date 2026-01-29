@@ -15,4 +15,6 @@ router.use('/carfaxdeals-history', require('./carfaxdeals-history'));
 router.use('/carsxe', require('./carsxe-history'));
 router.use('/check-expiring', require('./check-expiring-offers'));
 router.use('/check-saved-search-matches', require('./check-saved-search-matches'));
+router.use('/vincario-lookup', require('./vincario-lookup'));
+router.use('/vin-audit-lookup', require('./vinaudit-lookup'))
 module.exports = router;

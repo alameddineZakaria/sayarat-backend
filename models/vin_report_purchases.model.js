@@ -1,12 +1,12 @@
 module.exports = (sequelize, DataTypes) => {
   const VinReportPurchases = sequelize.define("VinReportPurchases", {
     id: {
-         type: DataTypes.UUID,
+      type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
       primaryKey: true,
     },
     user_id: {
-         type: DataTypes.UUID,
+      type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
       primaryKey: true,
     },
