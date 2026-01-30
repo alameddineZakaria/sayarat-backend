@@ -1,4 +1,4 @@
-export const PHOTO_TAGS = {
+const PHOTO_TAGS = {
     'front': { sortOrder: 1, description: 'Exterior front view' },
     'front-angle': { sortOrder: 2, description: 'Front 3/4 angle view' },
     'side-left': { sortOrder: 3, description: 'Left side profile' },
@@ -23,7 +23,24 @@ export const PHOTO_TAGS = {
 
 
 
-export const corsHeaders = {
+const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
+const APPLE_PRODUCTION_URL =
+    "https://buy.itunes.apple.com/verifyReceipt";
+const APPLE_SANDBOX_URL =
+    "https://sandbox.itunes.apple.com/verifyReceipt";
+const APPLE_STATUS = {
+    0: "Valid receipt",
+    21000: "Invalid JSON",
+    21002: "Malformed receipt",
+    21003: "Authentication failed",
+    21004: "Invalid shared secret",
+    21005: "Apple server unavailable",
+    21006: "Subscription expired",
+    21007: "Sandbox receipt",
+    21008: "Production receipt sent to sandbox",
+    21010: "Receipt not authorized",
+};
+module.exports = { PHOTO_TAGS, corsHeaders, APPLE_PRODUCTION_URL, APPLE_SANDBOX_URL, APPLE_STATUS }

@@ -16,5 +16,7 @@ router.use('/carsxe', require('./carsxe-history'));
 router.use('/check-expiring', require('./check-expiring-offers'));
 router.use('/check-saved-search-matches', require('./check-saved-search-matches'));
 router.use('/vincario-lookup', require('./vincario-lookup'));
-router.use('/vin-audit-lookup', require('./vinaudit-lookup'))
+router.use('/vin-audit-lookup', require('./vinaudit-lookup'));
+router.use('/verify-google-purchase', require('./verify-google-purchase'));
+router.use('/verify-apple-receipt', require('./verify-apple-receipt'));
 module.exports = router;
