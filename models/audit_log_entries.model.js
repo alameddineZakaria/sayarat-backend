@@ -1,30 +1,29 @@
 module.exports = (sequelize, DataTypes) => {
   const AuditLogEntries = sequelize.define("AuditLogEntries", {
     instance_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
+      type: DataTypes.UUID,
+      allowNull: false,
+      primaryKey: true
     },
     payload: {
       type: DataTypes.JSON,
-      allowNull: true,
+      allowNull: true
     },
     created_at: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     ip_address: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
+      type: DataTypes.STRING(64),
+      allowNull: false,
+      defaultValue: ""
     },
   }, {
-    tableName: "audit_log_entries",
-    timestamps: false,
+    tableName: "audit_log_entries", schema: "auth", timestamps: false
   });
 
   return AuditLogEntries;

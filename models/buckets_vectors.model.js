@@ -3,23 +3,25 @@ module.exports = (sequelize, DataTypes) => {
     id: {
       type: DataTypes.TEXT,
       allowNull: false,
-    },
+      primaryKey: true
+    }},
     type: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.ENUM("STANDARD", "ANALYTICS", "VECTOR"),
+      allowNull: false,
+      defaultValue: "VECTOR"
+    }},
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
-    },
+      defaultValue: DataTypes.NOW
+    }},
     updated_at: {
       type: DataTypes.DATE,
       allowNull: false,
-    },
+      defaultValue: DataTypes.NOW
+    }},
   }, {
-    tableName: "buckets_vectors",
-    timestamps: false,
+    tableName: "buckets_vectors", schema: "storage", timestamps: false
   });
 
   return BucketsVectors;

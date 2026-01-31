@@ -1,58 +1,56 @@
 module.exports = (sequelize, DataTypes) => {
   const FlowState = sequelize.define("FlowState", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false,
+      primaryKey: true
+    }},
     user_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: true
+    }},
     auth_code: {
       type: DataTypes.TEXT,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     code_challenge_method: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.ENUM("s256", "plain"),
+      allowNull: false
+    }},
     code_challenge: {
       type: DataTypes.TEXT,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     provider_type: {
       type: DataTypes.TEXT,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     provider_access_token: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     provider_refresh_token: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     created_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     updated_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     authentication_method: {
       type: DataTypes.TEXT,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     auth_code_issued_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
   }, {
-    tableName: "flow_state",
-    timestamps: false,
+    tableName: "flow_state", schema: "auth", timestamps: false
   });
 
   return FlowState;

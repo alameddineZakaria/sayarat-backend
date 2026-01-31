@@ -1,39 +1,36 @@
 module.exports = (sequelize, DataTypes) => {
   const MfaChallenges = sequelize.define("MfaChallenges", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false,
+      primaryKey: true
+    }},
     factor_id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false
+    }},
     created_at: {
       type: DataTypes.DATE,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     verified_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     ip_address: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.TEXT,
+      allowNull: false
+    }},
     otp_code: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     web_authn_session_data: {
       type: DataTypes.JSONB,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
   }, {
-    tableName: "mfa_challenges",
-    timestamps: false,
+    tableName: "mfa_challenges", schema: "auth", timestamps: false
   });
 
   return MfaChallenges;

@@ -1,17 +1,12 @@
 module.exports = (sequelize, DataTypes) => {
   const SchemaMigrations = sequelize.define("SchemaMigrations", {
     version: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
-    inserted_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      primaryKey: true
+    }},
   }, {
-    tableName: "schema_migrations",
-    timestamps: false,
+    tableName: "schema_migrations", schema: "auth", timestamps: false
   });
 
   return SchemaMigrations;

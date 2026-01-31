@@ -1,29 +1,32 @@
 module.exports = (sequelize, DataTypes) => {
   const Prefixes = sequelize.define("Prefixes", {
     bucket_id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.TEXT,
+      allowNull: false,
+      primaryKey: true
+    }},
     name: {
       type: DataTypes.TEXT,
       allowNull: false,
-    },
+      primaryKey: true
+    }},
     level: {
       type: DataTypes.INTEGER,
-      allowNull: false,
-    },
+      allowNull: true,
+      primaryKey: true
+    }},
     created_at: {
       type: DataTypes.DATE,
       allowNull: true,
-    },
+      defaultValue: DataTypes.NOW
+    }},
     updated_at: {
       type: DataTypes.DATE,
       allowNull: true,
-    },
+      defaultValue: DataTypes.NOW
+    }},
   }, {
-    tableName: "prefixes",
-    timestamps: false,
+    tableName: "prefixes", schema: "storage", timestamps: false
   });
 
   return Prefixes;

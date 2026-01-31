@@ -1,59 +1,59 @@
 module.exports = (sequelize, DataTypes) => {
   const OauthClients = sequelize.define("OauthClients", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false,
+      primaryKey: true
+    }},
     client_secret_hash: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     registration_type: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.ENUM("dynamic", "manual"),
+      allowNull: false
+    }},
     redirect_uris: {
       type: DataTypes.TEXT,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     grant_types: {
       type: DataTypes.TEXT,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     client_name: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     client_uri: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     logo_uri: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
-    },
+      defaultValue: DataTypes.NOW
+    }},
     updated_at: {
       type: DataTypes.DATE,
       allowNull: false,
-    },
+      defaultValue: DataTypes.NOW
+    }},
     deleted_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     client_type: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.ENUM("public", "confidential"),
+      allowNull: false,
+      defaultValue: "confidential"
+    }},
   }, {
-    tableName: "oauth_clients",
-    timestamps: false,
+    tableName: "oauth_clients", schema: "auth", timestamps: false
   });
 
   return OauthClients;

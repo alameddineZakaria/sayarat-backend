@@ -1,7 +1,7 @@
 const express = require('express');
 const { Op } = require('sequelize');
 const crypto = require('crypto');
-const { Messages } = require('../models');
+const { Message } = require('../models');
 
 const router = express.Router();
  
@@ -237,7 +237,7 @@ router.post('/', async (req, res) => {
                 ];
             }
 
-            const { rows, count } = await Messages.findAndCountAll({
+            const { rows, count } = await Message.findAndCountAll({
                 where,
                 limit,
                 offset,
@@ -245,7 +245,7 @@ router.post('/', async (req, res) => {
             });
 
             // Stats (same logic as Supabase fallback)
-            const all = await Messages.findAll();
+            const all = await Message.findAll();
 
             const stats = {
                 total: all.length,

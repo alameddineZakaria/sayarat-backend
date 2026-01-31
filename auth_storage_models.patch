@@ -1,0 +1,2069 @@
+--- models/audit_log_entries.model.js
++++ models/audit_log_entries.model.js
+@@ -1,30 +1,29 @@
+ module.exports = (sequelize, DataTypes) => {
+   const AuditLogEntries = sequelize.define("AuditLogEntries", {
+     instance_id: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     payload: {
+       type: DataTypes.JSON,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     ip_address: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.STRING(64),
++      allowNull: false,
++      defaultValue: ""
++    }},
+   }, {
+-    tableName: "audit_log_entries",
+-    timestamps: false,
++    tableName: "audit_log_entries", schema: "auth", timestamps: false
+   });
+ 
+   return AuditLogEntries;
+--- models/flow_state.model.js
++++ models/flow_state.model.js
+@@ -1,58 +1,56 @@
+ module.exports = (sequelize, DataTypes) => {
+   const FlowState = sequelize.define("FlowState", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     user_id: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     auth_code: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     code_challenge_method: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("s256", "plain"),
++      allowNull: false
++    }},
+     code_challenge: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     provider_type: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     provider_access_token: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     provider_refresh_token: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     authentication_method: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     auth_code_issued_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "flow_state",
+-    timestamps: false,
++    tableName: "flow_state", schema: "auth", timestamps: false
+   });
+ 
+   return FlowState;
+--- models/identities.model.js
++++ models/identities.model.js
+@@ -2,45 +2,44 @@
+   const Identities = sequelize.define("Identities", {
+     provider_id: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     user_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     identity_data: {
+       type: DataTypes.JSONB,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     provider: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     last_sign_in_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     email: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      defaultValue: DataTypes.UUIDV4,
++      primaryKey: true
++    }},
+   }, {
+-    tableName: "identities",
+-    timestamps: false,
++    tableName: "identities", schema: "auth", timestamps: false
+   });
+ 
+   return Identities;
+--- models/instances.model.js
++++ models/instances.model.js
+@@ -1,29 +1,28 @@
+ module.exports = (sequelize, DataTypes) => {
+   const Instances = sequelize.define("Instances", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     uuid: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     raw_base_config: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "instances",
+-    timestamps: false,
++    tableName: "instances", schema: "auth", timestamps: false
+   });
+ 
+   return Instances;
+--- models/mfa_amr_claims.model.js
++++ models/mfa_amr_claims.model.js
+@@ -1,30 +1,28 @@
+ module.exports = (sequelize, DataTypes) => {
+   const MfaAmrClaims = sequelize.define("MfaAmrClaims", {
+     session_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     authentication_method: {
+       type: DataTypes.TEXT,
++      allowNull: false
++    }},
++    id: {
++      type: DataTypes.UUID,
+       allowNull: false,
+-    },
+-    id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      primaryKey: true
++    }},
+   }, {
+-    tableName: "mfa_amr_claims",
+-    timestamps: false,
++    tableName: "mfa_amr_claims", schema: "auth", timestamps: false
+   });
+ 
+   return MfaAmrClaims;
+--- models/mfa_challenges.model.js
++++ models/mfa_challenges.model.js
+@@ -1,39 +1,36 @@
+ module.exports = (sequelize, DataTypes) => {
+   const MfaChallenges = sequelize.define("MfaChallenges", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     factor_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     verified_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     ip_address: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.TEXT,
++      allowNull: false
++    }},
+     otp_code: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     web_authn_session_data: {
+       type: DataTypes.JSONB,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "mfa_challenges",
+-    timestamps: false,
++    tableName: "mfa_challenges", schema: "auth", timestamps: false
+   });
+ 
+   return MfaChallenges;
+--- models/mfa_factors.model.js
++++ models/mfa_factors.model.js
+@@ -1,64 +1,60 @@
+ module.exports = (sequelize, DataTypes) => {
+   const MfaFactors = sequelize.define("MfaFactors", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     user_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     friendly_name: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     factor_type: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("totp", "webauthn", "phone"),
++      allowNull: false
++    }},
+     status: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("unverified", "verified"),
++      allowNull: false
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     secret: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     phone: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     last_challenged_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     web_authn_credential: {
+       type: DataTypes.JSONB,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     web_authn_aaguid: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     last_webauthn_challenge_data: {
+       type: DataTypes.JSONB,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "mfa_factors",
+-    timestamps: false,
++    tableName: "mfa_factors", schema: "auth", timestamps: false
+   });
+ 
+   return MfaFactors;
+--- models/oauth_authorizations.model.js
++++ models/oauth_authorizations.model.js
+@@ -1,80 +1,79 @@
+ module.exports = (sequelize, DataTypes) => {
+   const OauthAuthorizations = sequelize.define("OauthAuthorizations", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     authorization_id: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     client_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     user_id: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     redirect_uri: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     scope: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     state: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     resource: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     code_challenge: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     code_challenge_method: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.ENUM("s256", "plain"),
++      allowNull: true
++    }},
+     response_type: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("code"),
++      allowNull: false,
++      defaultValue: "code"
++    }},
+     status: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("pending", "approved", "denied", "expired"),
++      allowNull: false,
++      defaultValue: "pending"
++    }},
+     authorization_code: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     expires_at: {
+       type: DataTypes.DATE,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     approved_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     nonce: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "oauth_authorizations",
+-    timestamps: false,
++    tableName: "oauth_authorizations", schema: "auth", timestamps: false
+   });
+ 
+   return OauthAuthorizations;
+--- models/oauth_client_states.model.js
++++ models/oauth_client_states.model.js
+@@ -1,25 +1,24 @@
+ module.exports = (sequelize, DataTypes) => {
+   const OauthClientStates = sequelize.define("OauthClientStates", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     provider_type: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     code_verifier: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+   }, {
+-    tableName: "oauth_client_states",
+-    timestamps: false,
++    tableName: "oauth_client_states", schema: "auth", timestamps: false
+   });
+ 
+   return OauthClientStates;
+--- models/oauth_clients.model.js
++++ models/oauth_clients.model.js
+@@ -1,59 +1,59 @@
+ module.exports = (sequelize, DataTypes) => {
+   const OauthClients = sequelize.define("OauthClients", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     client_secret_hash: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     registration_type: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("dynamic", "manual"),
++      allowNull: false
++    }},
+     redirect_uris: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     grant_types: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     client_name: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     client_uri: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     logo_uri: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     deleted_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     client_type: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("public", "confidential"),
++      allowNull: false,
++      defaultValue: "confidential"
++    }},
+   }, {
+-    tableName: "oauth_clients",
+-    timestamps: false,
++    tableName: "oauth_clients", schema: "auth", timestamps: false
+   });
+ 
+   return OauthClients;
+--- models/oauth_consents.model.js
++++ models/oauth_consents.model.js
+@@ -1,35 +1,33 @@
+ module.exports = (sequelize, DataTypes) => {
+   const OauthConsents = sequelize.define("OauthConsents", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     user_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     client_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     scopes: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     granted_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     revoked_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "oauth_consents",
+-    timestamps: false,
++    tableName: "oauth_consents", schema: "auth", timestamps: false
+   });
+ 
+   return OauthConsents;
+--- models/one_time_tokens.model.js
++++ models/one_time_tokens.model.js
+@@ -1,39 +1,38 @@
+ module.exports = (sequelize, DataTypes) => {
+   const OneTimeTokens = sequelize.define("OneTimeTokens", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     user_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     token_type: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("confirmation_token", "reauthentication_token", "recovery_token", "email_change_token_new", "email_change_token_current", "phone_change_token"),
++      allowNull: false
++    }},
+     token_hash: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     relates_to: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+   }, {
+-    tableName: "one_time_tokens",
+-    timestamps: false,
++    tableName: "one_time_tokens", schema: "auth", timestamps: false
+   });
+ 
+   return OneTimeTokens;
+--- models/refresh_tokens.model.js
++++ models/refresh_tokens.model.js
+@@ -2,44 +2,43 @@
+   const RefreshTokens = sequelize.define("RefreshTokens", {
+     instance_id: {
+       type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      allowNull: true
++    }},
+     id: {
+       type: DataTypes.BIGINT,
+       allowNull: false,
+-    },
++      primaryKey: true
++    }},
+     token: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.STRING(255),
++      allowNull: true
++    }},
+     user_id: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.STRING(255),
++      allowNull: true
++    }},
+     revoked: {
+       type: DataTypes.BOOLEAN,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     parent: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.STRING(255),
++      allowNull: true
++    }},
+     session_id: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+   }, {
+-    tableName: "refresh_tokens",
+-    timestamps: false,
++    tableName: "refresh_tokens", schema: "auth", timestamps: false
+   });
+ 
+   return RefreshTokens;
+--- models/saml_providers.model.js
++++ models/saml_providers.model.js
+@@ -1,46 +1,44 @@
+ module.exports = (sequelize, DataTypes) => {
+   const SamlProviders = sequelize.define("SamlProviders", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     sso_provider_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     entity_id: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     metadata_xml: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     metadata_url: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     attribute_mapping: {
+       type: DataTypes.JSONB,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     name_id_format: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "saml_providers",
+-    timestamps: false,
++    tableName: "saml_providers", schema: "auth", timestamps: false
+   });
+ 
+   return SamlProviders;
+--- models/saml_relay_states.model.js
++++ models/saml_relay_states.model.js
+@@ -1,42 +1,40 @@
+ module.exports = (sequelize, DataTypes) => {
+   const SamlRelayStates = sequelize.define("SamlRelayStates", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     sso_provider_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     request_id: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     for_email: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     redirect_to: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     flow_state_id: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+   }, {
+-    tableName: "saml_relay_states",
+-    timestamps: false,
++    tableName: "saml_relay_states", schema: "auth", timestamps: false
+   });
+ 
+   return SamlRelayStates;
+--- models/schema_migrations.model.js
++++ models/schema_migrations.model.js
+@@ -1,17 +1,12 @@
+ module.exports = (sequelize, DataTypes) => {
+   const SchemaMigrations = sequelize.define("SchemaMigrations", {
+     version: {
+-      type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
+-    inserted_at: {
+-      type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      type: DataTypes.STRING(255),
++      allowNull: false,
++      primaryKey: true
++    }},
+   }, {
+-    tableName: "schema_migrations",
+-    timestamps: false,
++    tableName: "schema_migrations", schema: "auth", timestamps: false
+   });
+ 
+   return SchemaMigrations;
+--- models/sessions.model.js
++++ models/sessions.model.js
+@@ -1,70 +1,68 @@
+ module.exports = (sequelize, DataTypes) => {
+   const Sessions = sequelize.define("Sessions", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     user_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     factor_id: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     aal: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.ENUM("aal1", "aal2", "aal3"),
++      allowNull: true
++    }},
+     not_after: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     refreshed_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     user_agent: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     ip: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.TEXT,
++      allowNull: true
++    }},
+     tag: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     oauth_client_id: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     refresh_token_hmac_key: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     refresh_token_counter: {
+       type: DataTypes.BIGINT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     scopes: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "sessions",
+-    timestamps: false,
++    tableName: "sessions", schema: "auth", timestamps: false
+   });
+ 
+   return Sessions;
+--- models/sso_domains.model.js
++++ models/sso_domains.model.js
+@@ -1,30 +1,28 @@
+ module.exports = (sequelize, DataTypes) => {
+   const SsoDomains = sequelize.define("SsoDomains", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     sso_provider_id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false
++    }},
+     domain: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "sso_domains",
+-    timestamps: false,
++    tableName: "sso_domains", schema: "auth", timestamps: false
+   });
+ 
+   return SsoDomains;
+--- models/sso_providers.model.js
++++ models/sso_providers.model.js
+@@ -1,29 +1,28 @@
+ module.exports = (sequelize, DataTypes) => {
+   const SsoProviders = sequelize.define("SsoProviders", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      primaryKey: true
++    }},
+     resource_id: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     disabled: {
+       type: DataTypes.BOOLEAN,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "sso_providers",
+-    timestamps: false,
++    tableName: "sso_providers", schema: "auth", timestamps: false
+   });
+ 
+   return SsoProviders;
+--- models/users.model.js
++++ models/users.model.js
+@@ -1,86 +1,155 @@
+ module.exports = (sequelize, DataTypes) => {
+   const Users = sequelize.define("Users", {
++    instance_id: {
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     id: {
+       type: DataTypes.UUID,
+       allowNull: false,
+       primaryKey: true
+-    },
++    }},
++    aud: {
++      type: DataTypes.STRING(255),
++      allowNull: true
++    }},
++    role: {
++      type: DataTypes.STRING(255),
++      allowNull: true
++    }},
+     email: {
+-      type: DataTypes.TEXT,
++      type: DataTypes.STRING(255),
+       allowNull: true
+-    },
+-    full_name: {
+-      type: DataTypes.TEXT,
++    }},
++    encrypted_password: {
++      type: DataTypes.STRING(255),
+       allowNull: true
+-    },
++    }},
++    email_confirmed_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    invited_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    confirmation_token: {
++      type: DataTypes.STRING(255),
++      allowNull: true
++    }},
++    confirmation_sent_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    recovery_token: {
++      type: DataTypes.STRING(255),
++      allowNull: true
++    }},
++    recovery_sent_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    email_change_token_new: {
++      type: DataTypes.STRING(255),
++      allowNull: true
++    }},
++    email_change: {
++      type: DataTypes.STRING(255),
++      allowNull: true
++    }},
++    email_change_sent_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    last_sign_in_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    raw_app_meta_data: {
++      type: DataTypes.JSONB,
++      allowNull: true
++    }},
++    raw_user_meta_data: {
++      type: DataTypes.JSONB,
++      allowNull: true
++    }},
++    is_super_admin: {
++      type: DataTypes.BOOLEAN,
++      allowNull: true
++    }},
++    created_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    updated_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
+     phone: {
+       type: DataTypes.TEXT,
+       allowNull: true
+-    },
+-    avatar_url: {
+-      type: DataTypes.TEXT,
++    }},
++    phone_confirmed_at: {
++      type: DataTypes.DATE,
+       allowNull: true
+-    },
+-    phone_verified: {
+-      type: DataTypes.BOOLEAN,
+-      allowNull: true,
+-      defaultValue: false
+-    },
+-    email_verified: {
+-      type: DataTypes.BOOLEAN,
+-      allowNull: true,
+-      defaultValue: false
+-    },
+-    is_dealer: {
+-      type: DataTypes.BOOLEAN,
+-      allowNull: true,
+-      defaultValue: false
+-    },
+-    dealer_id: {
+-      type: DataTypes.UUID,
+-      allowNull: true
+-    },
+-    notification_preferences: {
+-      type: DataTypes.JSONB,
+-      allowNull: true,
+-      defaultValue: "{\"sms\": false, \"push\": true, \"email\": true}"
+-    },
+-    location: {
+-      type: DataTypes.TEXT,
+-      allowNull: true
+-    },
+-    bio: {
+-      type: DataTypes.TEXT,
+-      allowNull: true
+-    },
+-    created_at: {
+-      type: DataTypes.DATE,
+-      allowNull: true,
+-      defaultValue: DataTypes.NOW
+-    },
+-    updated_at: {
+-      type: DataTypes.DATE,
+-      allowNull: true,
+-      defaultValue: DataTypes.NOW
+-    },
+-    dealer_tier: {
++    }},
++    phone_change: {
+       type: DataTypes.TEXT,
+       allowNull: true,
+-      defaultValue: "basic"
+-    },
+-    subscription_status: {
+-      type: DataTypes.TEXT,
++      defaultValue: ""
++    }},
++    phone_change_token: {
++      type: DataTypes.STRING(255),
+       allowNull: true,
+-      defaultValue: "none"
+-    },
+-    push_token: {
+-      type: DataTypes.TEXT,
++      defaultValue: ""
++    }},
++    phone_change_sent_at: {
++      type: DataTypes.DATE,
+       allowNull: true
+-    }
++    }},
++    confirmed_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    email_change_token_current: {
++      type: DataTypes.STRING(255),
++      allowNull: true,
++      defaultValue: ""
++    }},
++    email_change_confirm_status: {
++      type: DataTypes.SMALLINT,
++      allowNull: true,
++      defaultValue: 0
++    }},
++    banned_until: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    reauthentication_token: {
++      type: DataTypes.STRING(255),
++      allowNull: true,
++      defaultValue: ""
++    }},
++    reauthentication_sent_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    is_sso_user: {
++      type: DataTypes.BOOLEAN,
++      allowNull: false,
++      defaultValue: false
++    }},
++    deleted_at: {
++      type: DataTypes.DATE,
++      allowNull: true
++    }},
++    is_anonymous: {
++      type: DataTypes.BOOLEAN,
++      allowNull: false,
++      defaultValue: false
++    }},
+   }, {
+-    tableName: "users",
+-    timestamps: false,
+-    underscored: true,
++    tableName: "users", schema: "auth", timestamps: false
+   });
+ 
+   return Users;
+--- models/buckets.model.js
++++ models/buckets.model.js
+@@ -3,51 +3,55 @@
+     id: {
+       type: DataTypes.TEXT,
+       allowNull: false,
+-    },
++      primaryKey: true
++    }},
+     name: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     owner: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: true,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+       allowNull: true,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     public: {
+       type: DataTypes.BOOLEAN,
+       allowNull: true,
+-    },
++      defaultValue: false
++    }},
+     avif_autodetection: {
+       type: DataTypes.BOOLEAN,
+       allowNull: true,
+-    },
++      defaultValue: false
++    }},
+     file_size_limit: {
+       type: DataTypes.BIGINT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     allowed_mime_types: {
+-      type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      type: DataTypes.ARRAY(DataTypes.TEXT),
++      allowNull: true
++    }},
+     owner_id: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     type: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("STANDARD", "ANALYTICS", "VECTOR"),
++      allowNull: false,
++      defaultValue: "STANDARD"
++    }},
+   }, {
+-    tableName: "buckets",
+-    timestamps: false,
++    tableName: "buckets", schema: "storage", timestamps: false
+   });
+ 
+   return Buckets;
+--- models/buckets_analytics.model.js
++++ models/buckets_analytics.model.js
+@@ -2,37 +2,40 @@
+   const BucketsAnalytics = sequelize.define("BucketsAnalytics", {
+     name: {
+       type: DataTypes.TEXT,
++      allowNull: false
++    }},
++    type: {
++      type: DataTypes.ENUM("STANDARD", "ANALYTICS", "VECTOR"),
+       allowNull: false,
+-    },
+-    type: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      defaultValue: "ANALYTICS"
++    }},
+     format: {
+       type: DataTypes.TEXT,
+       allowNull: false,
+-    },
++      defaultValue: "ICEBERG"
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      defaultValue: DataTypes.UUIDV4,
++      primaryKey: true
++    }},
+     deleted_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "buckets_analytics",
+-    timestamps: false,
++    tableName: "buckets_analytics", schema: "storage", timestamps: false
+   });
+ 
+   return BucketsAnalytics;
+--- models/buckets_vectors.model.js
++++ models/buckets_vectors.model.js
+@@ -3,23 +3,25 @@
+     id: {
+       type: DataTypes.TEXT,
+       allowNull: false,
+-    },
++      primaryKey: true
++    }},
+     type: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.ENUM("STANDARD", "ANALYTICS", "VECTOR"),
++      allowNull: false,
++      defaultValue: "VECTOR"
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+   }, {
+-    tableName: "buckets_vectors",
+-    timestamps: false,
++    tableName: "buckets_vectors", schema: "storage", timestamps: false
+   });
+ 
+   return BucketsVectors;
+--- models/migrations.model.js
++++ models/migrations.model.js
+@@ -3,24 +3,22 @@
+     id: {
+       type: DataTypes.INTEGER,
+       allowNull: false,
+-    },
++      primaryKey: true
++    }},
+     name: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.STRING(100),
++      allowNull: false
++    }},
+     hash: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.STRING(40),
++      allowNull: false
++    }},
+     executed_at: {
+       type: DataTypes.DATE,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "migrations",
+-    timestamps: false,
++    tableName: "migrations", schema: "storage", timestamps: false
+   });
+ 
+   return Migrations;
+--- models/objects.model.js
++++ models/objects.model.js
+@@ -1,61 +1,64 @@
+ module.exports = (sequelize, DataTypes) => {
+   const Objects = sequelize.define("Objects", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      defaultValue: DataTypes.UUIDV4,
++      primaryKey: true
++    }},
+     bucket_id: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     name: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     owner: {
+-      type: DataTypes.STRING,
+-      allowNull: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: true,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+       allowNull: true,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     last_accessed_at: {
+       type: DataTypes.DATE,
+       allowNull: true,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     metadata: {
+       type: DataTypes.JSONB,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     path_tokens: {
+-      type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      type: DataTypes.ARRAY(DataTypes.TEXT),
++      allowNull: true
++    }},
+     version: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     owner_id: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     user_metadata: {
+       type: DataTypes.JSONB,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     level: {
+       type: DataTypes.INTEGER,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "objects",
+-    timestamps: false,
++    tableName: "objects", schema: "storage", timestamps: false
+   });
+ 
+   return Objects;
+--- models/prefixes.model.js
++++ models/prefixes.model.js
+@@ -1,29 +1,32 @@
+ module.exports = (sequelize, DataTypes) => {
+   const Prefixes = sequelize.define("Prefixes", {
+     bucket_id: {
+-      type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.TEXT,
++      allowNull: false,
++      primaryKey: true
++    }},
+     name: {
+       type: DataTypes.TEXT,
+       allowNull: false,
+-    },
++      primaryKey: true
++    }},
+     level: {
+       type: DataTypes.INTEGER,
+-      allowNull: false,
+-    },
++      allowNull: true,
++      primaryKey: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: true,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+       allowNull: true,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+   }, {
+-    tableName: "prefixes",
+-    timestamps: false,
++    tableName: "prefixes", schema: "storage", timestamps: false
+   });
+ 
+   return Prefixes;
+--- models/s3_multipart_uploads.model.js
++++ models/s3_multipart_uploads.model.js
+@@ -1,45 +1,46 @@
+ module.exports = (sequelize, DataTypes) => {
+   const S3MultipartUploads = sequelize.define("S3MultipartUploads", {
+     id: {
+-      type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.TEXT,
++      allowNull: false,
++      primaryKey: true
++    }},
+     in_progress_size: {
+       type: DataTypes.BIGINT,
+       allowNull: false,
+-    },
++      defaultValue: 0
++    }},
+     upload_signature: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     bucket_id: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     key: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     version: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     owner_id: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     user_metadata: {
+       type: DataTypes.JSONB,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+   }, {
+-    tableName: "s3_multipart_uploads",
+-    timestamps: false,
++    tableName: "s3_multipart_uploads", schema: "storage", timestamps: false
+   });
+ 
+   return S3MultipartUploads;
+--- models/s3_multipart_uploads_parts.model.js
++++ models/s3_multipart_uploads_parts.model.js
+@@ -1,49 +1,51 @@
+ module.exports = (sequelize, DataTypes) => {
+   const S3MultipartUploadsParts = sequelize.define("S3MultipartUploadsParts", {
+     id: {
+-         type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.UUID,
++      allowNull: false,
++      defaultValue: DataTypes.UUIDV4,
++      primaryKey: true
++    }},
+     upload_id: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     size: {
+       type: DataTypes.BIGINT,
+       allowNull: false,
+-    },
++      defaultValue: 0
++    }},
+     part_number: {
+       type: DataTypes.INTEGER,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     bucket_id: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     key: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     etag: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     owner_id: {
+       type: DataTypes.TEXT,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     version: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+   }, {
+-    tableName: "s3_multipart_uploads_parts",
+-    timestamps: false,
++    tableName: "s3_multipart_uploads_parts", schema: "storage", timestamps: false
+   });
+ 
+   return S3MultipartUploadsParts;
+--- models/vector_indexes.model.js
++++ models/vector_indexes.model.js
+@@ -1,45 +1,47 @@
+ module.exports = (sequelize, DataTypes) => {
+   const VectorIndexes = sequelize.define("VectorIndexes", {
+     id: {
+-      type: DataTypes.UUID,
+-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+-      primaryKey: true,
+-    },
++      type: DataTypes.TEXT,
++      allowNull: false,
++      defaultValue: DataTypes.UUIDV4,
++      primaryKey: true
++    }},
+     name: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     bucket_id: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     data_type: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     dimension: {
+       type: DataTypes.INTEGER,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     distance_metric: {
+       type: DataTypes.TEXT,
+-      allowNull: false,
+-    },
++      allowNull: false
++    }},
+     metadata_configuration: {
+       type: DataTypes.JSONB,
+-      allowNull: true,
+-    },
++      allowNull: true
++    }},
+     created_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+     updated_at: {
+       type: DataTypes.DATE,
+       allowNull: false,
+-    },
++      defaultValue: DataTypes.NOW
++    }},
+   }, {
+-    tableName: "vector_indexes",
+-    timestamps: false,
++    tableName: "vector_indexes", schema: "storage", timestamps: false
+   });
+ 
+   return VectorIndexes;

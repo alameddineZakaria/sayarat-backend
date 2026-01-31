@@ -1,25 +1,24 @@
 module.exports = (sequelize, DataTypes) => {
   const OauthClientStates = sequelize.define("OauthClientStates", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false,
+      primaryKey: true
+    }},
     provider_type: {
       type: DataTypes.TEXT,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     code_verifier: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     created_at: {
       type: DataTypes.DATE,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
   }, {
-    tableName: "oauth_client_states",
-    timestamps: false,
+    tableName: "oauth_client_states", schema: "auth", timestamps: false
   });
 
   return OauthClientStates;

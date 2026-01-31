@@ -1,61 +1,64 @@
 module.exports = (sequelize, DataTypes) => {
   const Objects = sequelize.define("Objects", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true
+    }},
     bucket_id: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     name: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     owner: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: true
+    }},
     created_at: {
       type: DataTypes.DATE,
       allowNull: true,
-    },
+      defaultValue: DataTypes.NOW
+    }},
     updated_at: {
       type: DataTypes.DATE,
       allowNull: true,
-    },
+      defaultValue: DataTypes.NOW
+    }},
     last_accessed_at: {
       type: DataTypes.DATE,
       allowNull: true,
-    },
+      defaultValue: DataTypes.NOW
+    }},
     metadata: {
       type: DataTypes.JSONB,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     path_tokens: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      type: DataTypes.ARRAY(DataTypes.TEXT),
+      allowNull: true
+    }},
     version: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     owner_id: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     user_metadata: {
       type: DataTypes.JSONB,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     level: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
   }, {
-    tableName: "objects",
-    timestamps: false,
+    tableName: "objects", schema: "storage", timestamps: false
   });
 
   return Objects;

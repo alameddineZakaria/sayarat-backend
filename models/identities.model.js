@@ -2,45 +2,44 @@ module.exports = (sequelize, DataTypes) => {
   const Identities = sequelize.define("Identities", {
     provider_id: {
       type: DataTypes.TEXT,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     user_id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false
+    }},
     identity_data: {
       type: DataTypes.JSONB,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     provider: {
       type: DataTypes.TEXT,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     last_sign_in_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     created_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     updated_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     email: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true
+    }},
   }, {
-    tableName: "identities",
-    timestamps: false,
+    tableName: "identities", schema: "auth", timestamps: false
   });
 
   return Identities;

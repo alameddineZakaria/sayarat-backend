@@ -3,24 +3,22 @@ module.exports = (sequelize, DataTypes) => {
     id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-    },
+      primaryKey: true
+    }},
     name: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.STRING(100),
+      allowNull: false
+    }},
     hash: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.STRING(40),
+      allowNull: false
+    }},
     executed_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
   }, {
-    tableName: "migrations",
-    timestamps: false,
+    tableName: "migrations", schema: "storage", timestamps: false
   });
 
   return Migrations;

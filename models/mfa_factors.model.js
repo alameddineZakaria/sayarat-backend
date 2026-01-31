@@ -1,64 +1,60 @@
 module.exports = (sequelize, DataTypes) => {
   const MfaFactors = sequelize.define("MfaFactors", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false,
+      primaryKey: true
+    }},
     user_id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: false
+    }},
     friendly_name: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     factor_type: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.ENUM("totp", "webauthn", "phone"),
+      allowNull: false
+    }},
     status: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
-    },
+      type: DataTypes.ENUM("unverified", "verified"),
+      allowNull: false
+    }},
     created_at: {
       type: DataTypes.DATE,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     updated_at: {
       type: DataTypes.DATE,
-      allowNull: false,
-    },
+      allowNull: false
+    }},
     secret: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     phone: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     last_challenged_at: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     web_authn_credential: {
       type: DataTypes.JSONB,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
     web_authn_aaguid: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: true
+    }},
     last_webauthn_challenge_data: {
       type: DataTypes.JSONB,
-      allowNull: true,
-    },
+      allowNull: true
+    }},
   }, {
-    tableName: "mfa_factors",
-    timestamps: false,
+    tableName: "mfa_factors", schema: "auth", timestamps: false
   });
 
   return MfaFactors;
