@@ -1,0 +1,115 @@
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+const REPORT_PRICES = {
+  basic: {
+    priceId: 'price_1Sp5XuQm9R71HIbVxTRcHrDa',
+    amount: 499,
+    name: 'VIN Report - Basic Decode'
+  },
+  full: {
+    priceId: 'price_1Sp5XuQm9R71HIbVa9QcExwV',
+    amount: 999,
+    name: 'VIN Report - Full History'
+  }
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { vin, reportType, email, userId } = await req.json();
+
+    if (!vin || vin.length !== 17) {
+      throw new Error('Invalid VIN - must be 17 characters');
+    }
+
+    if (!reportType || !REPORT_PRICES[reportType]) {
+      throw new Error('Invalid report type - must be "basic" or "full"');
+    }
+
+    if (!email) {
+      throw new Error('Email is required for receipt');
+    }
+
+    const gatewayApiKey = Deno.env.get("GATEWAY_API_KEY");
+    if (!gatewayApiKey) {
+      throw new Error("Payment gateway not configured");
+    }
+
+    const priceInfo = REPORT_PRICES[reportType];
+
+    // Create PaymentIntent through the Payment Gateway
+    const response = await fetch('https://stripe.gateway.fastrouter.io/payments/payment-intents', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': gatewayApiKey
+      },
+      body: JSON.stringify({
+        amount: priceInfo.amount,
+        currency: 'usd',
+        metadata: {
+          vin: vin.toUpperCase(),
+          report_type: reportType,
+          email: email,
+          user_id: userId || 'guest',
+          product_name: priceInfo.name
+        },
+        description: `${priceInfo.name} for VIN: ${vin.toUpperCase()}`
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to create payment intent');
+    }
+
+    // Create a pending purchase record in the database
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (supabaseUrl && supabaseKey) {
+      await fetch(`${supabaseUrl}/rest/v1/vin_report_purchases`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          user_id: userId || null,
+          vin: vin.toUpperCase(),
+          report_type: reportType,
+          price_cents: priceInfo.amount,
+          payment_intent_id: data.id,
+          payment_status: 'pending',
+          email: email
+        })
+      });
+    }
+
+    return new Response(JSON.stringify({
+      clientSecret: data.clientSecret,
+      paymentIntentId: data.id,
+      amount: priceInfo.amount,
+      reportType: reportType,
+      vin: vin.toUpperCase()
+    }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+});

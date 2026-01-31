@@ -1,0 +1,206 @@
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { email, receiptType, data } = await req.json();
+
+    if (!email) {
+      throw new Error('Email is required');
+    }
+
+    const sendgridApiKey = Deno.env.get("SENDGRID_API_KEY");
+    const emailFrom = Deno.env.get("EMAIL_FROM") || "noreply@automarket.com";
+
+    if (!sendgridApiKey) {
+      console.log('SendGrid not configured, logging receipt instead');
+      console.log('Receipt:', { email, receiptType, data });
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Receipt logged (email not configured)' 
+      }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+
+    let subject = '';
+    let htmlContent = '';
+
+    if (receiptType === 'vin_report') {
+      const { vin, reportType, amount, paymentIntentId, purchaseDate } = data;
+      const formattedAmount = (amount / 100).toFixed(2);
+      const reportName = reportType === 'full' ? 'Full History Report' : 'Basic Decode Report';
+
+      subject = `Your VIN Report Purchase Confirmation - ${vin}`;
+      htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+            .receipt-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb; }
+            .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+            .row:last-child { border-bottom: none; }
+            .label { color: #6b7280; }
+            .value { font-weight: 600; }
+            .total { font-size: 1.2em; color: #2563eb; }
+            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 0.9em; }
+            .button { display: inline-block; background: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">Payment Confirmed</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">Thank you for your purchase!</p>
+            </div>
+            <div class="content">
+              <p>Hi there,</p>
+              <p>Your VIN report purchase has been confirmed. Here are your receipt details:</p>
+              
+              <div class="receipt-box">
+                <div class="row">
+                  <span class="label">VIN Number</span>
+                  <span class="value">${vin}</span>
+                </div>
+                <div class="row">
+                  <span class="label">Report Type</span>
+                  <span class="value">${reportName}</span>
+                </div>
+                <div class="row">
+                  <span class="label">Purchase Date</span>
+                  <span class="value">${new Date(purchaseDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                </div>
+                <div class="row">
+                  <span class="label">Transaction ID</span>
+                  <span class="value" style="font-size: 0.85em;">${paymentIntentId}</span>
+                </div>
+                <div class="row">
+                  <span class="label">Amount Paid</span>
+                  <span class="value total">$${formattedAmount} USD</span>
+                </div>
+              </div>
+
+              <p>Your report is now available in your account. You can access it anytime within the next 30 days.</p>
+              
+              <p style="text-align: center;">
+                <a href="#" class="button">View Your Report</a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>This is an automated receipt for your records.</p>
+              <p>If you have any questions, please contact our support team.</p>
+              <p>&copy; ${new Date().getFullYear()} AutoMarket. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+    } else if (receiptType === 'subscription') {
+      const { planName, amount, interval, subscriptionId, startDate } = data;
+      const formattedAmount = (amount / 100).toFixed(2);
+
+      subject = `Subscription Confirmation - ${planName}`;
+      htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+            .receipt-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb; }
+            .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 0.9em; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">Welcome to ${planName}!</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">Your subscription is now active</p>
+            </div>
+            <div class="content">
+              <div class="receipt-box">
+                <div class="row">
+                  <span>Plan</span>
+                  <span><strong>${planName}</strong></span>
+                </div>
+                <div class="row">
+                  <span>Billing</span>
+                  <span><strong>$${formattedAmount}/${interval}</strong></span>
+                </div>
+                <div class="row">
+                  <span>Start Date</span>
+                  <span><strong>${new Date(startDate).toLocaleDateString()}</strong></span>
+                </div>
+              </div>
+            </div>
+            <div class="footer">
+              <p>&copy; ${new Date().getFullYear()} AutoMarket. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+    } else {
+      // Generic receipt
+      subject = 'Payment Confirmation';
+      htmlContent = `
+        <html>
+        <body>
+          <h1>Payment Confirmed</h1>
+          <p>Thank you for your purchase!</p>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        </body>
+        </html>
+      `;
+    }
+
+    // Send email via SendGrid
+    const sendGridResponse = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sendgridApiKey}`
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email }] }],
+        from: { email: emailFrom, name: 'AutoMarket' },
+        subject: subject,
+        content: [{ type: 'text/html', value: htmlContent }]
+      })
+    });
+
+    if (!sendGridResponse.ok) {
+      const errorText = await sendGridResponse.text();
+      console.error('SendGrid error:', errorText);
+      throw new Error('Failed to send email');
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Receipt email sent successfully' 
+    }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+
+  } catch (error) {
+    console.error('Error sending receipt:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+});

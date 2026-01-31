@@ -1,0 +1,207 @@
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { user_id, digest_type = 'weekly' } = await req.json();
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get user info
+    const { data: user } = await supabase
+      .from('users')
+      .select('email, full_name')
+      .eq('id', user_id)
+      .single();
+
+    if (!user || !user.email) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'User not found' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+      );
+    }
+
+    // Check user's email preferences
+    const { data: prefs } = await supabase
+      .from('notification_preferences')
+      .select('email_enabled, email_weekly_digest, digest_frequency')
+      .eq('user_id', user_id)
+      .single();
+
+    if (prefs && (!prefs.email_enabled || !prefs.email_weekly_digest)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Email digest disabled' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Calculate date range based on digest type
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (digest_type) {
+      case 'daily':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case 'weekly':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'monthly':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
+
+    // Get user's saved searches
+    const { data: savedSearches } = await supabase
+      .from('saved_searches')
+      .select('*')
+      .eq('user_id', user_id)
+      .eq('notify_new_matches', true);
+
+    // Get new vehicles matching saved searches
+    const matchingVehicles: any[] = [];
+    
+    if (savedSearches && savedSearches.length > 0) {
+      for (const search of savedSearches) {
+        let query = supabase
+          .from('vehicles')
+          .select('id, title, make, model, year, price, images, created_at')
+          .eq('status', 'active')
+          .gte('created_at', startDate.toISOString())
+          .limit(5);
+
+        // Apply filters from saved search
+        const filters = search.filters;
+        if (filters.make && filters.make !== 'All Makes') {
+          query = query.eq('make', filters.make);
+        }
+        if (filters.bodyType && filters.bodyType !== 'All Types') {
+          query = query.eq('body_type', filters.bodyType);
+        }
+        if (filters.condition && filters.condition !== 'All') {
+          query = query.eq('condition', filters.condition);
+        }
+        if (filters.transmission && filters.transmission !== 'All') {
+          query = query.eq('transmission', filters.transmission);
+        }
+        if (filters.fuelType && filters.fuelType !== 'All') {
+          query = query.eq('fuel_type', filters.fuelType);
+        }
+
+        const { data: vehicles } = await query;
+        
+        if (vehicles && vehicles.length > 0) {
+          matchingVehicles.push({
+            search_name: search.name,
+            vehicles: vehicles,
+          });
+        }
+      }
+    }
+
+    // Get price drops on favorited vehicles
+    const { data: favorites } = await supabase
+      .from('favorites')
+      .select('vehicle_id')
+      .eq('user_id', user_id);
+
+    let priceDrops: any[] = [];
+    if (favorites && favorites.length > 0) {
+      const vehicleIds = favorites.map(f => f.vehicle_id);
+      
+      const { data: notifications } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user_id)
+        .eq('type', 'price_drop')
+        .gte('created_at', startDate.toISOString())
+        .in('data->>vehicle_id', vehicleIds);
+      
+      priceDrops = notifications || [];
+    }
+
+    // Get unread messages count
+    const { count: unreadMessages } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', user_id)
+      .eq('is_read', false);
+
+    // Build email content
+    const digestContent = {
+      user_name: user.full_name || 'Valued Customer',
+      period: digest_type,
+      matching_vehicles: matchingVehicles,
+      price_drops: priceDrops,
+      unread_messages: unreadMessages || 0,
+      generated_at: now.toISOString(),
+    };
+
+    // For now, we'll store the digest content
+    // In production, this would integrate with an email service like SendGrid, Resend, etc.
+    const { data: digest, error: digestError } = await supabase
+      .from('email_digest_queue')
+      .insert({
+        user_id: user_id,
+        digest_type: digest_type,
+        content: digestContent,
+        status: 'pending',
+        scheduled_for: now.toISOString(),
+      })
+      .select()
+      .single();
+
+    if (digestError) {
+      throw digestError;
+    }
+
+    // Create a notification about the digest
+    await supabase.from('notifications').insert({
+      user_id: user_id,
+      type: 'system',
+      title: `Your ${digest_type} digest is ready`,
+      message: `You have ${matchingVehicles.length} saved search matches, ${priceDrops.length} price drops, and ${unreadMessages || 0} unread messages.`,
+      data: { digest_id: digest.id },
+    });
+
+    // Mark digest as sent (in production, this would happen after actual email send)
+    await supabase
+      .from('email_digest_queue')
+      .update({ status: 'sent', sent_at: now.toISOString() })
+      .eq('id', digest.id);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        digest_id: digest.id,
+        summary: {
+          matching_vehicles: matchingVehicles.length,
+          price_drops: priceDrops.length,
+          unread_messages: unreadMessages || 0,
+        }
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error generating email digest:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    );
+  }
+});

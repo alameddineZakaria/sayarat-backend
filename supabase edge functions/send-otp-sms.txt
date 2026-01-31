@@ -1,0 +1,520 @@
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Helper to return consistent JSON responses - ALWAYS return 200 to avoid FunctionsHttpError
+function jsonResponse(data: any, status: number = 200) {
+  return new Response(JSON.stringify({ ...data, _status: status }), {
+    status: 200, // Always 200 to prevent FunctionsHttpError on client
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
+    
+    const { phone, action = '', otp: userOtp, language = 'en', channel = 'sms' } = body;
+    
+    // Get Twilio credentials
+    const sid = (Deno.env.get('TWILIO_ACCOUNT_SID') || '').trim();
+    const token = (Deno.env.get('TWILIO_AUTH_TOKEN') || '').trim();
+    const from = (Deno.env.get('TWILIO_PHONE_NUMBER') || '').trim();
+    
+    // Diagnostic action to check credentials format
+    if (action === 'diagnose') {
+      // Check for non-printable characters in token
+      const tokenHasNonPrintable = /[^\x20-\x7E]/.test(token);
+      const tokenChars = token.split('').slice(0, 8).map(c => ({
+        char: c === '-' ? 'dash' : (c.match(/[a-zA-Z0-9]/) ? c : `code:${c.charCodeAt(0)}`),
+        code: c.charCodeAt(0)
+      }));
+      
+      // Count character types
+      const dashCount = (token.match(/-/g) || []).length;
+      const alphaCount = (token.match(/[a-zA-Z]/g) || []).length;
+      const numCount = (token.match(/[0-9]/g) || []).length;
+      
+      const diagnostics = {
+        account_sid: {
+          exists: !!sid,
+          length: sid.length,
+          starts_with_ac: sid.toUpperCase().startsWith('AC'),
+          valid_format: sid.length === 34 && sid.toUpperCase().startsWith('AC'),
+          first_chars: sid.substring(0, 4),
+          last_chars: sid.substring(sid.length - 4),
+        },
+        auth_token: {
+          exists: !!token,
+          length: token.length,
+          valid_format: token.length === 32 && /^[a-zA-Z0-9]+$/.test(token),
+          first_chars: token.substring(0, 4),
+          last_chars: token.substring(token.length - 4),
+          has_non_printable: tokenHasNonPrintable,
+          first_8_char_details: tokenChars,
+          dash_count: dashCount,
+          alpha_count: alphaCount,
+          num_count: numCount,
+          is_all_dashes: dashCount === token.length,
+          is_alphanumeric: /^[a-zA-Z0-9]+$/.test(token),
+          sample_base64: token.length > 0 ? btoa(token.substring(0, 4)) : '',
+        },
+        phone_number: {
+          exists: !!from,
+          starts_with_plus: from.startsWith('+'),
+          value: from,
+        },
+        recommendations: [] as string[],
+        issue_detected: '',
+      };
+      
+      if (dashCount === 32 || diagnostics.auth_token.is_all_dashes) {
+        diagnostics.issue_detected = 'AUTH TOKEN IS ALL DASHES - This is a placeholder value, not a real token!';
+        diagnostics.recommendations.push('The auth token appears to be a placeholder (all dashes). Please set the real Twilio Auth Token.');
+        diagnostics.recommendations.push('Run: database secrets set TWILIO_AUTH_TOKEN=your_real_token_here');
+      } else if (!diagnostics.auth_token.valid_format) {
+        if (token.length !== 32) {
+          diagnostics.recommendations.push(`Auth Token should be exactly 32 characters (currently ${token.length})`);
+        }
+        if (!diagnostics.auth_token.is_alphanumeric) {
+          diagnostics.recommendations.push('Auth Token should only contain letters and numbers (no special characters)');
+        }
+      }
+      
+      if (!diagnostics.account_sid.valid_format) {
+        diagnostics.recommendations.push('Account SID should be 34 characters and start with "AC"');
+      }
+      if (!diagnostics.phone_number.starts_with_plus) {
+        diagnostics.recommendations.push('Phone number should start with "+" (e.g., +1234567890)');
+      }
+      
+      return jsonResponse({ success: true, diagnostics });
+    }
+
+    // Test credentials action
+    if (action === 'test_credentials') {
+      if (!sid || !token) {
+        return jsonResponse({ 
+          success: false,
+          error: 'Missing credentials',
+          error_ar: 'بيانات الاعتماد مفقودة',
+          details: {
+            has_sid: !!sid,
+            has_token: !!token,
+            sid_length: sid.length,
+            token_length: token.length,
+          }
+        });
+      }
+
+      // Check if token is placeholder
+      const dashCount = (token.match(/-/g) || []).length;
+      if (dashCount === 32) {
+        return jsonResponse({ 
+          success: false,
+          error: 'Auth token is a placeholder (all dashes). Please set the real Twilio Auth Token.',
+          error_ar: 'رمز المصادقة هو عنصر نائب. يرجى تعيين رمز Twilio الحقيقي.',
+          fix: 'Run: database secrets set TWILIO_AUTH_TOKEN=your_real_token_here',
+          help: 'Get your Auth Token from https://www.twilio.com/console',
+        });
+      }
+
+      // Use btoa for Base64 encoding
+      let authString: string;
+      try {
+        authString = btoa(`${sid}:${token}`);
+      } catch (e) {
+        return jsonResponse({ 
+          success: false,
+          error: 'Failed to encode credentials: ' + String(e),
+          error_ar: 'فشل في ترميز بيانات الاعتماد',
+        });
+      }
+      
+      console.log('Testing credentials...');
+      console.log('SID:', sid.substring(0, 6) + '...');
+      console.log('Token length:', token.length);
+      console.log('Token dash count:', dashCount);
+      
+      try {
+        const testRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}.json`, {
+          method: 'GET',
+          headers: { 
+            'Authorization': `Basic ${authString}`,
+            'Accept': 'application/json',
+          },
+        });
+        
+        const testText = await testRes.text();
+        console.log('Twilio response status:', testRes.status);
+        console.log('Twilio response:', testText.substring(0, 200));
+        
+        let testData;
+        try {
+          testData = JSON.parse(testText);
+        } catch {
+          return jsonResponse({ 
+            success: false,
+            error: 'Invalid response from Twilio',
+            error_ar: 'استجابة غير صالحة من Twilio',
+            response_preview: testText.substring(0, 300),
+          });
+        }
+        
+        if (testRes.ok) {
+          return jsonResponse({ 
+            success: true,
+            account_status: testData.status,
+            account_name: testData.friendly_name,
+            account_type: testData.type,
+          });
+        } else {
+          return jsonResponse({ 
+            success: false,
+            error: testData.message || 'Authentication failed',
+            error_ar: 'فشل المصادقة',
+            code: testData.code,
+            http_status: testRes.status,
+            help: 'Please verify your Twilio credentials at https://www.twilio.com/console',
+          });
+        }
+      } catch (fetchErr: any) {
+        console.error('Fetch error:', fetchErr);
+        return jsonResponse({ 
+          success: false,
+          error: 'Failed to connect to Twilio: ' + fetchErr.message,
+          error_ar: 'فشل الاتصال بـ Twilio'
+        });
+      }
+    }
+    
+    // For send and verify actions, phone is required
+    if (action === 'send' || action === 'verify') {
+      if (!phone) {
+        return jsonResponse({ 
+          success: false,
+          error: 'Phone number is required',
+          error_ar: 'رقم الهاتف مطلوب'
+        });
+      }
+
+      const cleanPhone = phone.replace(/[\s-]/g, '');
+      if (!/^\+961(3|70|71|76|78|79|81)\d{6}$/.test(cleanPhone)) {
+        return jsonResponse({ 
+          success: false,
+          error: 'Invalid Lebanese phone number. Format: +961 XX XXX XXX',
+          error_ar: 'رقم هاتف لبناني غير صالح'
+        });
+      }
+
+      if (action === 'send') {
+        const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+        // Delete any existing OTPs for this phone
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/phone_otps?phone=eq.${encodeURIComponent(cleanPhone)}`, {
+            method: 'DELETE', 
+            headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` },
+          });
+        } catch (e) {
+          console.log('Delete old OTPs error (non-critical):', e);
+        }
+
+        // Insert new OTP
+        try {
+          await fetch(`${supabaseUrl}/rest/v1/phone_otps`, {
+            method: 'POST',
+            headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: cleanPhone, otp: otpCode, expires_at: expiresAt, attempts: 0, verified: false }),
+          });
+        } catch (e) {
+          console.log('Insert OTP error:', e);
+          return jsonResponse({ 
+            success: false,
+            error: 'Failed to save OTP',
+            error_ar: 'فشل في حفظ رمز التحقق'
+          });
+        }
+
+        if (!sid || !token || !from) {
+          return jsonResponse({ 
+            success: false,
+            error: 'SMS service not configured. Please contact support.',
+            error_ar: 'خدمة الرسائل غير مهيأة. يرجى الاتصال بالدعم.',
+            details: 'Missing Twilio credentials'
+          });
+        }
+
+        // Check if token is placeholder
+        const dashCount = (token.match(/-/g) || []).length;
+        if (dashCount === 32) {
+          return jsonResponse({ 
+            success: false,
+            error: 'SMS service not properly configured. Please contact support.',
+            error_ar: 'خدمة الرسائل غير مهيأة بشكل صحيح.',
+            admin_note: 'Auth token is placeholder - run: database secrets set TWILIO_AUTH_TOKEN=your_real_token',
+          });
+        }
+
+        const msg = language === 'ar' ? `سيارات - رمز التحقق: ${otpCode}` : `Sayarat - Your verification code is: ${otpCode}`;
+        
+        const isWhatsApp = channel === 'whatsapp';
+        const toNumber = isWhatsApp ? `whatsapp:${cleanPhone}` : cleanPhone;
+        const fromNumber = isWhatsApp ? `whatsapp:${from}` : from;
+        
+        // Use btoa for Base64 encoding
+        let authString: string;
+        try {
+          authString = btoa(`${sid}:${token}`);
+        } catch {
+          return jsonResponse({ 
+            success: false,
+            error: 'Failed to encode credentials',
+            error_ar: 'فشل في ترميز بيانات الاعتماد',
+          });
+        }
+        
+        try {
+          console.log('Sending SMS to:', cleanPhone.substring(0, 6) + '...');
+          
+          const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Basic ${authString}`, 
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: `To=${encodeURIComponent(toNumber)}&From=${encodeURIComponent(fromNumber)}&Body=${encodeURIComponent(msg)}`,
+          });
+
+          const twilioText = await twilioRes.text();
+          console.log('Twilio response:', twilioRes.status, twilioText.substring(0, 200));
+          
+          let twilioData;
+          try {
+            twilioData = JSON.parse(twilioText);
+          } catch {
+            return jsonResponse({ 
+              success: false,
+              error: 'Invalid response from SMS service',
+              error_ar: 'استجابة غير صالحة من خدمة الرسائل',
+              response_preview: twilioText.substring(0, 300),
+            });
+          }
+          
+          if (!twilioRes.ok) {
+            let errorMessage = 'Failed to send SMS';
+            let errorMessageAr = 'فشل إرسال الرسالة';
+            let helpLink = '';
+            
+            if (twilioData.code === 21608 || twilioData.code === 21211) {
+              errorMessage = 'For trial accounts, verify your phone number at twilio.com/console/phone-numbers/verified first';
+              errorMessageAr = 'لحسابات التجريبية، يجب التحقق من رقم الهاتف أولاً';
+              helpLink = 'https://www.twilio.com/console/phone-numbers/verified';
+            } else if (twilioData.code === 20003) {
+              errorMessage = 'SMS service authentication error. Please contact support.';
+              errorMessageAr = 'خطأ في مصادقة خدمة الرسائل. يرجى الاتصال بالدعم.';
+              helpLink = 'https://www.twilio.com/console';
+            } else if (twilioData.code === 21606) {
+              errorMessage = 'SMS service configuration error. Please contact support.';
+              errorMessageAr = 'خطأ في تكوين خدمة الرسائل';
+              helpLink = 'https://www.twilio.com/console/phone-numbers/incoming';
+            } else if (twilioData.message) {
+              errorMessage = twilioData.message;
+            }
+            
+            return jsonResponse({ 
+              success: false,
+              error: errorMessage, 
+              error_ar: errorMessageAr,
+              code: twilioData.code,
+              help_link: helpLink,
+              is_trial_issue: twilioData.code === 21608 || twilioData.code === 21211,
+              is_auth_issue: twilioData.code === 20003,
+            });
+          }
+
+          return jsonResponse({ 
+            success: true, 
+            message: isWhatsApp ? 'WhatsApp message sent' : 'SMS sent',
+            message_ar: isWhatsApp ? 'تم إرسال رسالة واتساب' : 'تم إرسال الرسالة',
+            channel: channel,
+            sid: twilioData.sid,
+          });
+        } catch (fetchErr: any) {
+          console.error('Twilio fetch error:', fetchErr);
+          return jsonResponse({ 
+            success: false,
+            error: 'Failed to connect to SMS service: ' + fetchErr.message,
+            error_ar: 'فشل الاتصال بخدمة الرسائل'
+          });
+        }
+
+      } else if (action === 'verify') {
+        try {
+          const res = await fetch(`${supabaseUrl}/rest/v1/phone_otps?phone=eq.${encodeURIComponent(cleanPhone)}&verified=eq.false&order=created_at.desc&limit=1`, 
+            { headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } });
+          const records = await res.json();
+          const record = records?.[0];
+          
+          if (!record) {
+            return jsonResponse({ 
+              verified: false, 
+              success: false,
+              error: 'No verification code found. Please request a new code.',
+              error_ar: 'لم يتم العثور على رمز التحقق. يرجى طلب رمز جديد.'
+            });
+          }
+          
+          if (new Date(record.expires_at) < new Date()) {
+            return jsonResponse({ 
+              verified: false, 
+              success: false,
+              error: 'Code expired. Please request a new code.',
+              error_ar: 'انتهت صلاحية الرمز. يرجى طلب رمز جديد.'
+            });
+          }
+          
+          if (record.attempts >= 5) {
+            return jsonResponse({ 
+              verified: false, 
+              success: false,
+              error: 'Too many attempts. Please request a new code.',
+              error_ar: 'محاولات كثيرة جداً. يرجى طلب رمز جديد.'
+            });
+          }
+
+          // Increment attempts
+          await fetch(`${supabaseUrl}/rest/v1/phone_otps?id=eq.${record.id}`, { 
+            method: 'PATCH', 
+            headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ attempts: record.attempts + 1 }) 
+          });
+
+          if (String(record.otp) !== String(userOtp)) {
+            const remaining = 5 - (record.attempts + 1);
+            return jsonResponse({ 
+              verified: false, 
+              success: false,
+              error: `Invalid code. ${remaining} attempts remaining.`,
+              error_ar: `رمز غير صالح. ${remaining} محاولات متبقية.`,
+              attempts_remaining: remaining
+            });
+          }
+
+          // Mark OTP as verified
+          await fetch(`${supabaseUrl}/rest/v1/phone_otps?id=eq.${record.id}`, { 
+            method: 'PATCH', 
+            headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ verified: true }) 
+          });
+
+          // Create or update user
+          const phoneDigits = cleanPhone.replace('+', '');
+          const email = `phone_${phoneDigits}@sayarat.app`;
+          const password = `PhoneAuth_${phoneDigits}_SecurePass123!`;
+
+          const usersRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, { 
+            headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}` } 
+          });
+          const usersData = await usersRes.json();
+          const existing = usersData?.users?.find((u: any) => u.email === email || u.phone === cleanPhone);
+
+          if (existing) {
+            await fetch(`${supabaseUrl}/auth/v1/admin/users/${existing.id}`, { 
+              method: 'PUT', 
+              headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' }, 
+              body: JSON.stringify({ password, phone: cleanPhone, phone_confirm: true, email_confirm: true }) 
+            });
+          } else {
+            const newUserRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, { 
+              method: 'POST', 
+              headers: { 'apikey': serviceKey, 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' }, 
+              body: JSON.stringify({ email, password, phone: cleanPhone, email_confirm: true, phone_confirm: true }) 
+            });
+            const newUser = await newUserRes.json();
+            
+            if (newUser?.id) {
+              await fetch(`${supabaseUrl}/rest/v1/users`, { 
+                method: 'POST', 
+                headers: { 
+                  'apikey': serviceKey, 
+                  'Authorization': `Bearer ${serviceKey}`, 
+                  'Content-Type': 'application/json', 
+                  'Prefer': 'resolution=merge-duplicates' 
+                }, 
+                body: JSON.stringify({ id: newUser.id, phone: cleanPhone, phone_verified: true }) 
+              });
+            }
+          }
+
+          // Sign in user
+          const signInRes = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, { 
+            method: 'POST', 
+            headers: { 'apikey': serviceKey, 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ email, password }) 
+          });
+          const signIn = await signInRes.json();
+
+          if (signIn.access_token) {
+            return jsonResponse({ 
+              verified: true, 
+              success: true,
+              session: { 
+                access_token: signIn.access_token, 
+                refresh_token: signIn.refresh_token 
+              }, 
+              user: { 
+                id: signIn.user?.id, 
+                phone: cleanPhone, 
+                email 
+              } 
+            });
+          }
+          
+          return jsonResponse({ 
+            verified: true, 
+            success: true,
+            credentials: { email, password } 
+          });
+        } catch (verifyErr: any) {
+          console.error('Verify error:', verifyErr);
+          return jsonResponse({ 
+            verified: false, 
+            success: false,
+            error: 'Verification failed: ' + verifyErr.message,
+            error_ar: 'فشل التحقق'
+          });
+        }
+      }
+    }
+
+    return jsonResponse({ 
+      success: false,
+      error: 'Invalid action. Use: diagnose, test_credentials, send, or verify',
+      error_ar: 'إجراء غير صالح'
+    });
+      
+  } catch (e: any) {
+    console.error('Function error:', e);
+    return jsonResponse({ 
+      success: false,
+      error: e?.message || 'Server error',
+      error_ar: 'خطأ في الخادم'
+    });
+  }
+});

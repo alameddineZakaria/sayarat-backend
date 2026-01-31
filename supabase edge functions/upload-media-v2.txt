@@ -1,0 +1,298 @@
+// Version 6.0 - Added video upload support for listings
+// Last updated: 2026-01-15T19:44:00Z
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+};
+
+// Base64 character lookup table
+const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function createBase64LookupTable(): number[] {
+  const table: number[] = new Array(256).fill(-1);
+  for (let i = 0; i < BASE64_CHARS.length; i++) {
+    table[BASE64_CHARS.charCodeAt(i)] = i;
+  }
+  table['='.charCodeAt(0)] = 0;
+  return table;
+}
+
+const BASE64_LOOKUP = createBase64LookupTable();
+
+function decodeBase64ToBytes(base64String: string): Uint8Array {
+  // Remove whitespace and data URL prefix if present
+  let cleanBase64 = base64String.replace(/\s/g, '');
+  const commaIndex = cleanBase64.indexOf(',');
+  if (commaIndex !== -1) {
+    cleanBase64 = cleanBase64.substring(commaIndex + 1);
+  }
+  
+  // Handle padding
+  let padding = 0;
+  if (cleanBase64.endsWith('==')) padding = 2;
+  else if (cleanBase64.endsWith('=')) padding = 1;
+  
+  const outputLength = Math.floor(cleanBase64.length * 3 / 4) - padding;
+  const output = new Uint8Array(outputLength);
+  let outputIndex = 0;
+  
+  for (let i = 0; i < cleanBase64.length; i += 4) {
+    const c1 = BASE64_LOOKUP[cleanBase64.charCodeAt(i)] || 0;
+    const c2 = BASE64_LOOKUP[cleanBase64.charCodeAt(i + 1)] || 0;
+    const c3 = BASE64_LOOKUP[cleanBase64.charCodeAt(i + 2)] || 0;
+    const c4 = BASE64_LOOKUP[cleanBase64.charCodeAt(i + 3)] || 0;
+    const combined = (c1 << 18) | (c2 << 12) | (c3 << 6) | c4;
+    
+    if (outputIndex < outputLength) output[outputIndex++] = (combined >> 16) & 0xFF;
+    if (outputIndex < outputLength) output[outputIndex++] = (combined >> 8) & 0xFF;
+    if (outputIndex < outputLength) output[outputIndex++] = combined & 0xFF;
+  }
+  return output;
+}
+
+function detectContentType(base64Data: string, mediaType?: string): string {
+  // Check for data URL prefix first
+  if (base64Data.startsWith('data:')) {
+    const match = base64Data.match(/^data:([^;,]+)/);
+    if (match) return match[1];
+  }
+  
+  // Use mediaType hint if provided
+  if (mediaType === 'voice') return 'audio/mp4'; // m4a is audio/mp4
+  if (mediaType === 'video') return 'video/mp4';
+  if (mediaType === 'image' || mediaType === 'listing') return 'image/jpeg';
+  
+  // Try to detect from base64 content
+  const cleanBase64 = base64Data.replace(/^data:[^,]+,/, '');
+  const firstChars = cleanBase64.substring(0, 30);
+  
+  // Image signatures
+  if (firstChars.startsWith('/9j/')) return 'image/jpeg';
+  if (firstChars.startsWith('iVBORw')) return 'image/png';
+  if (firstChars.startsWith('R0lGOD')) return 'image/gif';
+  if (firstChars.startsWith('UklGR')) return 'image/webp';
+  
+  // Video signatures
+  if (firstChars.startsWith('AAAA')) {
+    // Could be mp4 or m4a - check for video hint
+    if (mediaType === 'video') return 'video/mp4';
+    return 'video/mp4'; // Default to video for ftyp boxes
+  }
+  if (firstChars.startsWith('GkXfo')) return 'video/webm';
+  if (firstChars.startsWith('Rklg')) return 'video/webm'; // RIFF container for webm
+  if (firstChars.includes('ftyp')) return 'video/mp4';
+  if (firstChars.includes('moov') || firstChars.includes('mdat')) return 'video/mp4';
+  
+  // Audio signatures
+  if (firstChars.startsWith('T2dnU')) return 'audio/ogg';
+  if (firstChars.startsWith('SUQz')) return 'audio/mpeg'; // MP3 with ID3
+  if (firstChars.startsWith('//uQ')) return 'audio/mpeg'; // MP3
+  
+  // QuickTime MOV signature
+  if (firstChars.includes('qt') || firstChars.includes('wide')) return 'video/quicktime';
+  
+  return 'application/octet-stream';
+}
+
+function getFileExtension(contentType: string): string {
+  const extensionMap: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mov',
+    'video/webm': 'webm',
+    'video/x-msvideo': 'avi',
+    'video/x-matroska': 'mkv',
+    'audio/mp4': 'm4a',
+    'audio/m4a': 'm4a',
+    'audio/webm': 'webm',
+    'audio/ogg': 'ogg',
+    'audio/mpeg': 'mp3',
+    'application/octet-stream': 'bin'
+  };
+  return extensionMap[contentType] || contentType.split('/')[1] || 'bin';
+}
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    // Parse request body
+    let body;
+    try {
+      body = await req.json();
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { base64Data, fileName, userId, mediaType, folder } = body;
+
+    // Validate required fields
+    if (!base64Data) {
+      return new Response(
+        JSON.stringify({ error: 'No base64Data provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (typeof base64Data !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'base64Data must be a string' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Processing upload - mediaType:', mediaType, 'folder:', folder, 'base64 length:', base64Data.length);
+
+    // Detect content type
+    const contentType = detectContentType(base64Data, mediaType);
+    console.log('Detected content type:', contentType);
+
+    // Check if it's a video
+    const isVideo = contentType.startsWith('video/');
+    
+    // Video size limit (50MB)
+    const maxVideoSize = 50 * 1024 * 1024;
+    const maxImageSize = 10 * 1024 * 1024;
+    const estimatedSize = Math.floor(base64Data.length * 0.75);
+    
+    if (isVideo && estimatedSize > maxVideoSize) {
+      return new Response(
+        JSON.stringify({ error: 'Video file too large. Maximum size is 50MB.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!isVideo && estimatedSize > maxImageSize) {
+      return new Response(
+        JSON.stringify({ error: 'Image file too large. Maximum size is 10MB.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Decode base64 to bytes
+    let bytes: Uint8Array;
+    try {
+      bytes = decodeBase64ToBytes(base64Data);
+      console.log('Decoded bytes length:', bytes.length);
+    } catch (decodeError) {
+      console.error('Base64 decode error:', decodeError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to decode base64 data', details: String(decodeError) }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (bytes.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Decoded data is empty' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Generate filename
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 10);
+    const extension = getFileExtension(contentType);
+    const finalFileName = fileName || `${timestamp}-${randomId}.${extension}`;
+    
+    // Determine bucket and path based on media type
+    let bucket: string;
+    let storagePath: string;
+    
+    if (mediaType === 'voice') {
+      bucket = 'voice-messages';
+      storagePath = `chat/${userId || 'anonymous'}/${finalFileName}`;
+    } else if (mediaType === 'listing' || mediaType === 'video' || folder === 'listings') {
+      // Vehicle listing images and videos
+      bucket = 'vehicle-images';
+      const subfolder = isVideo ? 'videos' : 'images';
+      storagePath = `listings/${subfolder}/${finalFileName}`;
+    } else if (mediaType === 'profile') {
+      bucket = 'profile-photos';
+      storagePath = `${userId || 'anonymous'}/${finalFileName}`;
+    } else {
+      // Default to vehicle-images for chat images
+      bucket = 'vehicle-images';
+      storagePath = `chat/${userId || 'anonymous'}/${finalFileName}`;
+    }
+
+    console.log('Uploading to bucket:', bucket, 'path:', storagePath, 'isVideo:', isVideo);
+
+    // Get Supabase credentials
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase credentials');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Upload to Supabase Storage
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${storagePath}`;
+    console.log('Upload URL:', uploadUrl);
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': contentType,
+        'x-upsert': 'true'
+      },
+      body: bytes
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error('Upload failed:', uploadResponse.status, errorText);
+      return new Response(
+        JSON.stringify({ error: 'Upload failed', details: errorText, status: uploadResponse.status }),
+        { status: uploadResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Generate public URL
+    const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${storagePath}`;
+    console.log('Upload successful, public URL:', publicUrl);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        publicUrl: publicUrl,
+        url: publicUrl,
+        bucket,
+        path: storagePath,
+        contentType,
+        size: bytes.length,
+        isVideo,
+        version: '6.0'
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : String(error),
+        version: '6.0'
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

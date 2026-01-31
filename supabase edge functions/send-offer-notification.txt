@@ -1,0 +1,308 @@
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+interface OfferNotificationPayload {
+  offerId: string;
+  type: 'new_offer' | 'counter_offer' | 'offer_accepted' | 'offer_rejected' | 'offer_withdrawn' | 'new_message' | 'offer_expired';
+  recipientId: string;
+  title: string;
+  body: string;
+  amount?: number;
+  vehicleTitle?: string;
+}
+
+interface ExpoPushMessage {
+  to: string;
+  sound: 'default' | null;
+  title: string;
+  body: string;
+  data: Record<string, any>;
+  channelId: string;
+  priority: 'default' | 'normal' | 'high';
+  badge?: number;
+}
+
+// Check if current time is within quiet hours
+function isInQuietHours(prefs: any): boolean {
+  if (!prefs.quiet_hours_enabled) return false;
+  
+  const now = new Date();
+  const currentDay = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][now.getDay()];
+  
+  // Check if current day is in quiet hours days
+  const quietDays = prefs.quiet_hours_days || [];
+  if (!quietDays.includes(currentDay)) return false;
+  
+  // Parse times
+  const startParts = (prefs.quiet_hours_start || '22:00:00').split(':');
+  const endParts = (prefs.quiet_hours_end || '08:00:00').split(':');
+  
+  const startHour = parseInt(startParts[0], 10);
+  const endHour = parseInt(endParts[0], 10);
+  const currentHour = now.getHours();
+  
+  // Handle overnight quiet hours (e.g., 22:00 to 08:00)
+  if (startHour > endHour) {
+    return currentHour >= startHour || currentHour < endHour;
+  }
+  
+  // Same day quiet hours (e.g., 14:00 to 18:00)
+  return currentHour >= startHour && currentHour < endHour;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const payload: OfferNotificationPayload = await req.json();
+    const { offerId, type, recipientId, title, body, amount, vehicleTitle } = payload;
+
+    console.log('Received offer notification request:', { offerId, type, recipientId, title });
+
+    if (!offerId || !type || !recipientId || !title || !body) {
+      throw new Error('Missing required fields: offerId, type, recipientId, title, body');
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Get user's preferences including quiet hours
+    const userPrefsResponse = await fetch(
+      `${supabaseUrl}/rest/v1/user_preferences?user_id=eq.${recipientId}&select=language,push_enabled,offer_notifications,quiet_hours_enabled,quiet_hours_start,quiet_hours_end,quiet_hours_days`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    let userLanguage = 'en';
+    let pushEnabled = true;
+    let offerNotificationsEnabled = true;
+    let inQuietHours = false;
+
+    if (userPrefsResponse.ok) {
+      const prefs = await userPrefsResponse.json();
+      if (prefs && prefs.length > 0) {
+        const userPrefs = prefs[0];
+        userLanguage = userPrefs.language || 'en';
+        pushEnabled = userPrefs.push_enabled !== false;
+        offerNotificationsEnabled = userPrefs.offer_notifications !== false;
+        inQuietHours = isInQuietHours(userPrefs);
+      }
+    }
+
+    // Create notification record in offer_notifications table (always, regardless of push status)
+    try {
+      await fetch(
+        `${supabaseUrl}/rest/v1/offer_notifications`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
+            user_id: recipientId,
+            offer_id: offerId,
+            type,
+            title,
+            body,
+            amount: amount || null,
+            is_read: false,
+          }),
+        }
+      );
+      console.log('Offer notification record created');
+    } catch (notifError) {
+      console.error('Error creating notification record:', notifError);
+    }
+
+    // Also create a general notification for the notifications page
+    try {
+      await fetch(
+        `${supabaseUrl}/rest/v1/notifications`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
+            user_id: recipientId,
+            type: type === 'new_offer' ? 'offer_received' : type,
+            title,
+            message: body,
+            data: { offerId, amount, vehicleTitle },
+            is_read: false,
+          }),
+        }
+      );
+      console.log('General notification record created');
+    } catch (genNotifError) {
+      console.error('Error creating general notification:', genNotifError);
+    }
+
+    // Check if we should send push notification
+    if (!pushEnabled || !offerNotificationsEnabled) {
+      console.log('Push or offer notifications disabled for user:', recipientId);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Notifications disabled', sent: 0 }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    if (inQuietHours) {
+      console.log('User is in quiet hours, skipping push notification');
+      return new Response(
+        JSON.stringify({ success: true, message: 'User in quiet hours', sent: 0 }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Get user's push tokens from push_tokens table
+    const tokensResponse = await fetch(
+      `${supabaseUrl}/rest/v1/push_tokens?user_id=eq.${recipientId}&is_active=eq.true&select=token,device_type`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    if (!tokensResponse.ok) {
+      console.error('Failed to fetch push tokens');
+      return new Response(
+        JSON.stringify({ success: true, message: 'Failed to fetch push tokens', sent: 0 }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    const tokens = await tokensResponse.json();
+
+    if (!tokens || tokens.length === 0) {
+      console.log('No push tokens found for user:', recipientId);
+      return new Response(
+        JSON.stringify({ success: true, message: 'No push tokens found', sent: 0 }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    console.log(`Found ${tokens.length} push token(s) for user`);
+
+    // Count unread offers for badge
+    const unreadResponse = await fetch(
+      `${supabaseUrl}/rest/v1/offer_notifications?user_id=eq.${recipientId}&is_read=eq.false&select=id`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    let badgeCount = 1;
+    if (unreadResponse.ok) {
+      const unreadNotifs = await unreadResponse.json();
+      badgeCount = unreadNotifs?.length || 1;
+    }
+
+    // Prepare Expo push messages
+    const messages: ExpoPushMessage[] = tokens.map((tokenData: { token: string }) => ({
+      to: tokenData.token,
+      sound: 'default',
+      title,
+      body,
+      data: {
+        type: 'offer',
+        offerType: type,
+        offerId,
+        amount,
+        vehicleTitle,
+        timestamp: new Date().toISOString(),
+        url: `/offer-chat/${offerId}`,
+      },
+      channelId: 'offers',
+      priority: 'high',
+      badge: badgeCount,
+    }));
+
+    console.log('Sending push notifications to Expo...');
+
+    // Send to Expo Push Notification Service
+    const expoPushResponse = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(messages),
+    });
+
+    if (!expoPushResponse.ok) {
+      const errorText = await expoPushResponse.text();
+      console.error('Expo push failed:', errorText);
+      throw new Error(`Expo push failed: ${errorText}`);
+    }
+
+    const expoPushResult = await expoPushResponse.json();
+    const results = expoPushResult.data || [];
+    const successCount = results.filter((r: any) => r.status === 'ok').length;
+    const errorCount = results.filter((r: any) => r.status === 'error').length;
+
+    console.log(`Push notification results: ${successCount} success, ${errorCount} errors`);
+
+    // Handle invalid tokens (remove them from database)
+    const invalidTokens = results
+      .filter((r: any, i: number) => r.status === 'error' && r.details?.error === 'DeviceNotRegistered')
+      .map((_: any, i: number) => tokens[i]?.token)
+      .filter(Boolean);
+
+    if (invalidTokens.length > 0) {
+      console.log(`Marking ${invalidTokens.length} invalid token(s) as inactive`);
+      for (const token of invalidTokens) {
+        await fetch(
+          `${supabaseUrl}/rest/v1/push_tokens?token=eq.${encodeURIComponent(token)}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ is_active: false }),
+          }
+        );
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        sent: successCount,
+        errors: errorCount,
+        invalidTokensRemoved: invalidTokens.length,
+      }),
+      { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+
+  } catch (error: any) {
+    console.error('Error in send-offer-notification:', error);
+    return new Response(
+      JSON.stringify({ error: error.message, success: false }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+  }
+});

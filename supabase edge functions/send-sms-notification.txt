@@ -1,0 +1,413 @@
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// Pure JavaScript Base64 encoding (Deno compatible)
+function encodeBase64(str: string): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  const bytes = new TextEncoder().encode(str);
+  let result = '';
+  let i = 0;
+  
+  while (i < bytes.length) {
+    const b1 = bytes[i++] || 0;
+    const b2 = bytes[i++] || 0;
+    const b3 = bytes[i++] || 0;
+    
+    const enc1 = b1 >> 2;
+    const enc2 = ((b1 & 3) << 4) | (b2 >> 4);
+    const enc3 = ((b2 & 15) << 2) | (b3 >> 6);
+    const enc4 = b3 & 63;
+    
+    result += chars.charAt(enc1) + chars.charAt(enc2);
+    result += (i - 2 > bytes.length) ? '=' : chars.charAt(enc3);
+    result += (i - 1 > bytes.length) ? '=' : chars.charAt(enc4);
+  }
+  
+  return result;
+}
+
+// Helper to return consistent JSON responses
+function jsonResponse(data: any, status: number = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json();
+    const { user_id, phone, message, notification_type, action } = body;
+
+    // Get Twilio credentials from environment
+    const twilioAccountSid = (Deno.env.get('TWILIO_ACCOUNT_SID') || '').trim();
+    const twilioAuthToken = (Deno.env.get('TWILIO_AUTH_TOKEN') || '').trim();
+    const twilioPhoneNumber = (Deno.env.get('TWILIO_PHONE_NUMBER') || '').trim();
+
+    // ============= DIAGNOSTIC ACTIONS (check these first) =============
+    
+    // Diagnostic action to check credentials
+    if (action === 'diagnose') {
+      const diagnostics = {
+        account_sid: {
+          exists: !!twilioAccountSid,
+          length: twilioAccountSid.length,
+          starts_with_ac: twilioAccountSid.toUpperCase().startsWith('AC'),
+          valid_format: twilioAccountSid.length === 34 && twilioAccountSid.toUpperCase().startsWith('AC'),
+          first_chars: twilioAccountSid.substring(0, 4),
+          last_chars: twilioAccountSid.substring(twilioAccountSid.length - 4),
+        },
+        auth_token: {
+          exists: !!twilioAuthToken,
+          length: twilioAuthToken.length,
+          valid_format: twilioAuthToken.length === 32,
+          first_chars: twilioAuthToken.substring(0, 4),
+          last_chars: twilioAuthToken.substring(twilioAuthToken.length - 4),
+        },
+        phone_number: {
+          exists: !!twilioPhoneNumber,
+          starts_with_plus: twilioPhoneNumber.startsWith('+'),
+          value: twilioPhoneNumber,
+        },
+        recommendations: [] as string[],
+      };
+      
+      if (!diagnostics.account_sid.valid_format) {
+        diagnostics.recommendations.push('Account SID should be 34 characters and start with "AC"');
+      }
+      if (!diagnostics.auth_token.valid_format) {
+        diagnostics.recommendations.push('Auth Token should be exactly 32 characters');
+      }
+      if (!diagnostics.phone_number.starts_with_plus) {
+        diagnostics.recommendations.push('Phone number should start with "+" (e.g., +1234567890)');
+      }
+      
+      return jsonResponse({ success: true, diagnostics });
+    }
+
+    // Test network connectivity - simple test
+    if (action === 'test_network') {
+      console.log('Testing network connectivity...');
+      const startTime = Date.now();
+      try {
+        // Test with a simple GET request to Twilio base
+        const testRes = await fetch('https://api.twilio.com', { 
+          method: 'GET',
+        });
+        const elapsed = Date.now() - startTime;
+        return jsonResponse({ 
+          success: true,
+          message: 'Network connectivity OK',
+          status: testRes.status,
+          elapsed_ms: elapsed,
+        });
+      } catch (err: any) {
+        const elapsed = Date.now() - startTime;
+        console.error('Network test failed:', err);
+        return jsonResponse({ 
+          success: false,
+          error: 'Network test failed: ' + err.message,
+          elapsed_ms: elapsed,
+        });
+      }
+    }
+
+    // Test unauthenticated API access
+    if (action === 'test_api') {
+      console.log('Testing Twilio API endpoint (unauthenticated)...');
+      const startTime = Date.now();
+      try {
+        // This should return 401 but proves we can reach the API
+        const testRes = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}.json`, 
+          { method: 'GET' }
+        );
+        const elapsed = Date.now() - startTime;
+        const testText = await testRes.text();
+        return jsonResponse({ 
+          success: true,
+          message: 'API endpoint reachable',
+          status: testRes.status,
+          response_preview: testText.substring(0, 200),
+          elapsed_ms: elapsed,
+        });
+      } catch (err: any) {
+        const elapsed = Date.now() - startTime;
+        console.error('API test failed:', err);
+        return jsonResponse({ 
+          success: false,
+          error: 'API test failed: ' + err.message,
+          elapsed_ms: elapsed,
+        });
+      }
+    }
+
+    // Test credentials action
+    if (action === 'test_credentials') {
+      if (!twilioAccountSid || !twilioAuthToken) {
+        return jsonResponse({ 
+          success: false,
+          error: 'Missing Twilio credentials'
+        });
+      }
+
+      const authString = encodeBase64(`${twilioAccountSid}:${twilioAuthToken}`);
+      
+      console.log('Testing Twilio credentials...');
+      console.log('Auth header:', `Basic ${authString.substring(0, 10)}...`);
+      const startTime = Date.now();
+      
+      try {
+        const testRes = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}.json`, 
+          {
+            method: 'GET',
+            headers: { 
+              'Authorization': `Basic ${authString}`,
+              'Accept': 'application/json',
+            },
+          }
+        );
+        
+        const elapsed = Date.now() - startTime;
+        console.log('Response received in', elapsed, 'ms, status:', testRes.status);
+        
+        const testText = await testRes.text();
+        console.log('Response text:', testText.substring(0, 200));
+        
+        let testData;
+        try {
+          testData = JSON.parse(testText);
+        } catch {
+          return jsonResponse({ 
+            success: false,
+            error: 'Invalid JSON response from Twilio',
+            response_preview: testText.substring(0, 500),
+            http_status: testRes.status,
+            elapsed_ms: elapsed,
+          });
+        }
+        
+        if (testRes.ok) {
+          return jsonResponse({ 
+            success: true,
+            account_status: testData.status,
+            account_name: testData.friendly_name,
+            account_type: testData.type,
+            elapsed_ms: elapsed,
+          });
+        } else {
+          return jsonResponse({ 
+            success: false,
+            error: testData.message || 'Authentication failed',
+            code: testData.code,
+            http_status: testRes.status,
+            elapsed_ms: elapsed,
+          });
+        }
+      } catch (fetchErr: any) {
+        const elapsed = Date.now() - startTime;
+        console.error('Twilio test error:', fetchErr);
+        return jsonResponse({ 
+          success: false,
+          error: 'Failed to connect to Twilio: ' + fetchErr.message,
+          error_name: fetchErr.name,
+          elapsed_ms: elapsed,
+        });
+      }
+    }
+
+    // ============= SMS SENDING LOGIC =============
+
+    // Validate credentials for sending SMS
+    if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
+      console.log('Twilio credentials not configured');
+      return jsonResponse({ 
+        success: false, 
+        error: 'SMS service not configured. Missing Twilio credentials.',
+        missing: {
+          account_sid: !twilioAccountSid,
+          auth_token: !twilioAuthToken,
+          phone_number: !twilioPhoneNumber,
+        }
+      }, 400);
+    }
+
+    // Validate phone number
+    if (!phone) {
+      return jsonResponse({ 
+        success: false, 
+        error: 'Phone number is required' 
+      }, 400);
+    }
+
+    // Validate message
+    if (!message) {
+      return jsonResponse({ 
+        success: false, 
+        error: 'Message is required' 
+      }, 400);
+    }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check user's SMS preferences if user_id provided
+    if (user_id) {
+      const { data: prefs } = await supabase
+        .from('notification_preferences')
+        .select('sms_enabled, sms_price_drops, sms_new_messages, sms_test_drive_reminders, sms_phone')
+        .eq('user_id', user_id)
+        .single();
+
+      if (prefs) {
+        // Check if SMS is enabled for this notification type
+        if (!prefs.sms_enabled) {
+          return jsonResponse({ 
+            success: false, 
+            error: 'SMS notifications disabled for this user' 
+          });
+        }
+
+        // Check specific notification type preference
+        if (notification_type === 'price_drop' && !prefs.sms_price_drops) {
+          return jsonResponse({ 
+            success: false, 
+            error: 'Price drop SMS disabled for this user' 
+          });
+        }
+        if (notification_type === 'new_message' && !prefs.sms_new_messages) {
+          return jsonResponse({ 
+            success: false, 
+            error: 'Message SMS disabled for this user' 
+          });
+        }
+        if (notification_type === 'test_drive' && !prefs.sms_test_drive_reminders) {
+          return jsonResponse({ 
+            success: false, 
+            error: 'Test drive SMS disabled for this user' 
+          });
+        }
+      }
+    }
+
+    // Format phone number (ensure it starts with +)
+    let formattedPhone = phone.replace(/[\s-]/g, '');
+    if (!formattedPhone.startsWith('+')) {
+      // Assume Australian number if no country code
+      formattedPhone = '+61' + formattedPhone.replace(/^0/, '');
+    }
+
+    // Create Base64 auth string
+    const authString = encodeBase64(`${twilioAccountSid}:${twilioAuthToken}`);
+
+    // Send SMS via Twilio
+    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
+    
+    console.log('Sending SMS to:', formattedPhone.substring(0, 6) + '***');
+    const startTime = Date.now();
+    
+    const twilioResponse = await fetch(twilioUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${authString}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: new URLSearchParams({
+        To: formattedPhone,
+        From: twilioPhoneNumber,
+        Body: message,
+      }),
+    });
+
+    const elapsed = Date.now() - startTime;
+    const twilioText = await twilioResponse.text();
+    
+    let twilioData;
+    try {
+      twilioData = JSON.parse(twilioText);
+    } catch {
+      return jsonResponse({ 
+        success: false, 
+        error: 'Invalid response from Twilio',
+        response_preview: twilioText.substring(0, 500),
+        elapsed_ms: elapsed,
+      }, 500);
+    }
+
+    if (!twilioResponse.ok) {
+      console.error('Twilio error:', twilioData);
+      
+      let errorMessage = twilioData.message || 'Failed to send SMS';
+      let helpLink = '';
+      
+      // Provide helpful error messages for common issues
+      if (twilioData.code === 21608 || twilioData.code === 21211) {
+        errorMessage = 'For trial accounts, the recipient phone number must be verified first at twilio.com/console/phone-numbers/verified';
+        helpLink = 'https://www.twilio.com/console/phone-numbers/verified';
+      } else if (twilioData.code === 20003) {
+        errorMessage = 'Authentication failed. Please check your Twilio Account SID and Auth Token.';
+        helpLink = 'https://www.twilio.com/console';
+      } else if (twilioData.code === 21606) {
+        errorMessage = 'The From phone number is not a valid Twilio number.';
+        helpLink = 'https://www.twilio.com/console/phone-numbers/incoming';
+      } else if (twilioData.code === 21610) {
+        errorMessage = 'The recipient has unsubscribed from receiving messages.';
+      } else if (twilioData.code === 21614) {
+        errorMessage = 'Invalid To phone number format.';
+      }
+      
+      return jsonResponse({ 
+        success: false, 
+        error: errorMessage,
+        twilio_code: twilioData.code,
+        help_link: helpLink,
+        is_trial_issue: twilioData.code === 21608 || twilioData.code === 21211,
+        elapsed_ms: elapsed,
+      }, 400);
+    }
+
+    console.log('SMS sent successfully, SID:', twilioData.sid);
+
+    // Log the SMS send
+    try {
+      await supabase.from('notifications').insert({
+        user_id: user_id || null,
+        type: 'system',
+        title: 'SMS Sent',
+        message: `SMS notification sent to ${formattedPhone.slice(-4).padStart(formattedPhone.length, '*')}`,
+        data: { 
+          sms_sid: twilioData.sid,
+          notification_type 
+        },
+      });
+    } catch (logError) {
+      console.log('Failed to log SMS notification (non-critical):', logError);
+    }
+
+    return jsonResponse({ 
+      success: true, 
+      message_sid: twilioData.sid,
+      status: twilioData.status,
+      elapsed_ms: elapsed,
+    });
+
+  } catch (error: any) {
+    console.error('Error sending SMS:', error);
+    return jsonResponse({ 
+      success: false, 
+      error: error.message || 'Internal server error' 
+    }, 500);
+  }
+});

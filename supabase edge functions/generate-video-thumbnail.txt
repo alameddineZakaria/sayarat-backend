@@ -1,0 +1,103 @@
+// Video Thumbnail Generator Edge Function
+// Stores thumbnail metadata and generates placeholder thumbnails
+// For production, integrate with a video processing service like Cloudinary, Mux, or AWS MediaConvert
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+};
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { videoUrl, listingId, category, timestampSeconds = 1 } = await req.json();
+
+    if (!videoUrl) {
+      return new Response(
+        JSON.stringify({ error: 'videoUrl is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Generate a unique thumbnail filename
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 10);
+    const thumbnailFileName = `thumb_${timestamp}_${randomId}.jpg`;
+    
+    // For now, we'll create a placeholder thumbnail URL
+    // In production, you would:
+    // 1. Use a service like Cloudinary: https://res.cloudinary.com/demo/video/upload/so_1/sample.jpg
+    // 2. Use Mux for video processing
+    // 3. Use AWS MediaConvert or Lambda with FFmpeg layer
+    
+    // Extract video filename for reference
+    const videoFileName = videoUrl.split('/').pop() || 'video';
+    
+    // Create thumbnail metadata record
+    const thumbnailData = {
+      video_url: videoUrl,
+      thumbnail_url: null, // Will be populated when actual thumbnail is generated
+      listing_id: listingId || null,
+      category: category || 'general',
+      timestamp_seconds: timestampSeconds,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    };
+
+    // Store in video_thumbnails table (create if not exists handled by upsert)
+    const { data: thumbnailRecord, error: insertError } = await supabase
+      .from('video_thumbnails')
+      .upsert(thumbnailData, { onConflict: 'video_url' })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.log('Note: video_thumbnails table may not exist yet. Error:', insertError.message);
+      // Continue without storing - return a generated thumbnail URL pattern
+    }
+
+    // Generate a placeholder thumbnail URL using video poster frame
+    // Most video players can extract a frame - we'll use a pattern that works with video.js
+    // For actual implementation, integrate with a video processing service
+    
+    // Cloudinary-style transformation URL (if using Cloudinary)
+    // const cloudinaryThumbnail = videoUrl.replace('/video/upload/', '/video/upload/so_1,f_jpg/');
+    
+    // For now, return the video URL with metadata indicating thumbnail should be extracted client-side
+    const response = {
+      success: true,
+      videoUrl,
+      thumbnailUrl: null, // Client should extract first frame
+      category: category || 'general',
+      timestampSeconds,
+      status: 'client_extract', // Indicates client should extract thumbnail
+      message: 'Thumbnail extraction delegated to client. Use expo-av to extract frame at specified timestamp.',
+      record: thumbnailRecord || thumbnailData,
+    };
+
+    return new Response(
+      JSON.stringify(response),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error in generate-video-thumbnail:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to process thumbnail request',
+        details: error instanceof Error ? error.message : String(error)
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

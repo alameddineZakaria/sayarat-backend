@@ -1,0 +1,690 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature'
+};
+
+// Product ID to tier mapping
+const PRODUCT_TO_TIER: Record<string, string> = {
+  'com.sayarat.subscription.basic.monthly': 'basic',
+  'com.sayarat.subscription.pro.monthly': 'pro',
+  'com.sayarat.subscription.premium.monthly': 'premium',
+};
+
+// Product ID to boost duration mapping (in days)
+const BOOST_DURATIONS: Record<string, number> = {
+  'com.sayarat.boost.1day': 1,
+  'com.sayarat.boost.3days': 3,
+  'com.sayarat.boost.7days': 7,
+};
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get the raw body for signature verification
+    const body = await req.text();
+    const signature = req.headers.get('stripe-signature');
+    
+    // Parse the event
+    let event;
+    try {
+      event = JSON.parse(body);
+    } catch (err) {
+      console.error('Failed to parse webhook body:', err);
+      return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+
+    console.log(`Processing Stripe webhook event: ${event.type}`);
+    console.log('Event ID:', event.id);
+
+    // Handle different event types
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        await handleCheckoutCompleted(supabase, event.data.object, supabaseUrl, supabaseServiceKey);
+        break;
+      }
+
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        await handleSubscriptionUpdated(supabase, event.data.object);
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        await handleSubscriptionDeleted(supabase, event.data.object);
+        break;
+      }
+
+      case 'customer.subscription.paused': {
+        await handleSubscriptionPaused(supabase, event.data.object);
+        break;
+      }
+
+      case 'customer.subscription.resumed': {
+        await handleSubscriptionResumed(supabase, event.data.object);
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        await handleInvoicePaymentSucceeded(supabase, event.data.object, supabaseUrl, supabaseServiceKey);
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        await handleInvoicePaymentFailed(supabase, event.data.object);
+        break;
+      }
+
+      case 'charge.refunded': {
+        await handleChargeRefunded(supabase, event.data.object);
+        break;
+      }
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    return new Response(JSON.stringify({ received: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+
+  } catch (error: any) {
+    console.error('Webhook error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+});
+
+// Send email receipt
+async function sendEmailReceipt(supabaseUrl: string, supabaseServiceKey: string, receiptData: any) {
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-email-receipt`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(receiptData),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Failed to send email receipt:', error);
+    } else {
+      console.log('Email receipt sent successfully');
+    }
+  } catch (error) {
+    console.error('Error calling send-email-receipt:', error);
+  }
+}
+
+// Handle checkout.session.completed
+async function handleCheckoutCompleted(supabase: any, session: any, supabaseUrl: string, supabaseServiceKey: string) {
+  console.log('Processing checkout.session.completed:', session.id);
+  
+  const metadata = session.metadata || {};
+  const productId = metadata.product_id;
+  const userId = metadata.user_id;
+  const customerId = session.customer;
+  const customerEmail = session.customer_email || session.customer_details?.email;
+  const customerName = session.customer_details?.name;
+  const amountTotal = session.amount_total ? session.amount_total / 100 : 0;
+
+  if (!productId) {
+    console.log('No product_id in metadata, skipping');
+    return;
+  }
+
+  console.log(`Product: ${productId}, User: ${userId}, Customer: ${customerId}`);
+
+  // Record the purchase
+  const { data: purchase, error: purchaseError } = await supabase
+    .from('purchases')
+    .insert({
+      user_id: userId,
+      product_id: productId,
+      transaction_id: session.id,
+      platform: 'stripe',
+      amount: amountTotal,
+      currency: session.currency?.toUpperCase() || 'USD',
+      status: 'completed',
+      metadata: {
+        stripe_customer_id: customerId,
+        stripe_session_id: session.id,
+        payment_status: session.payment_status,
+        customer_email: customerEmail,
+        payment_intent: session.payment_intent,
+        ...metadata
+      }
+    })
+    .select()
+    .single();
+
+  if (purchaseError) {
+    console.error('Error recording purchase:', purchaseError);
+  } else {
+    console.log('Purchase recorded:', purchase.id);
+  }
+
+  // Handle subscription products
+  if (productId.includes('subscription') && session.mode === 'subscription') {
+    const tier = PRODUCT_TO_TIER[productId] || 'basic';
+    const subscriptionId = session.subscription;
+
+    // Create or update subscription record
+    const { error: subError } = await supabase
+      .from('subscriptions')
+      .upsert({
+        user_id: userId,
+        tier: tier,
+        status: 'active',
+        platform: 'stripe',
+        platform_subscription_id: subscriptionId,
+        stripe_customer_id: customerId,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      });
+
+    if (subError) {
+      console.error('Error creating subscription:', subError);
+    } else {
+      console.log(`Subscription created/updated for user ${userId}, tier: ${tier}`);
+    }
+
+    // Update user profile with dealer status if applicable
+    if (userId) {
+      await supabase
+        .from('profiles')
+        .update({
+          is_dealer: true,
+          dealer_tier: tier,
+          subscription_status: 'active'
+        })
+        .eq('id', userId);
+    }
+  }
+
+  // Handle vehicle history report
+  let vin: string | undefined;
+  if (productId === 'com.sayarat.vehicle_history_report') {
+    vin = metadata.vin;
+    if (vin && userId) {
+      // Grant access to vehicle history report
+      const { error: accessError } = await supabase
+        .from('vehicle_history_access')
+        .upsert({
+          user_id: userId,
+          vin: vin,
+          purchase_id: purchase?.id,
+          created_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year access
+        }, {
+          onConflict: 'user_id,vin'
+        });
+
+      if (accessError) {
+        console.error('Error granting vehicle history access:', accessError);
+      } else {
+        console.log(`Vehicle history access granted for VIN: ${vin}`);
+      }
+    }
+  }
+
+  // Handle boost purchases
+  let listingTitle: string | undefined;
+  if (productId.includes('boost')) {
+    const listingId = metadata.listing_id;
+    const boostDays = BOOST_DURATIONS[productId] || 1;
+    
+    if (listingId) {
+      const boostEndDate = new Date();
+      boostEndDate.setDate(boostEndDate.getDate() + boostDays);
+
+      // Get listing title for email
+      const { data: listing } = await supabase
+        .from('vehicles')
+        .select('title')
+        .eq('id', listingId)
+        .single();
+      
+      listingTitle = listing?.title;
+
+      const { error: boostError } = await supabase
+        .from('vehicles')
+        .update({
+          is_boosted: true,
+          boost_expires_at: boostEndDate.toISOString(),
+          boost_level: boostDays >= 7 ? 3 : boostDays >= 3 ? 2 : 1
+        })
+        .eq('id', listingId);
+
+      if (boostError) {
+        console.error('Error activating boost:', boostError);
+      } else {
+        console.log(`Boost activated for listing ${listingId}, expires: ${boostEndDate.toISOString()}`);
+      }
+    }
+  }
+
+  // Send email receipt
+  if (customerEmail) {
+    await sendEmailReceipt(supabaseUrl, supabaseServiceKey, {
+      email: customerEmail,
+      customerName: customerName,
+      productId: productId,
+      transactionId: session.id,
+      amount: amountTotal,
+      currency: session.currency?.toUpperCase() || 'USD',
+      purchaseDate: new Date().toISOString(),
+      isRenewal: false,
+      vin: vin,
+      listingTitle: listingTitle
+    });
+  }
+}
+
+// Handle subscription updates
+async function handleSubscriptionUpdated(supabase: any, subscription: any) {
+  console.log('Processing subscription update:', subscription.id);
+  
+  const customerId = subscription.customer;
+  const status = subscription.status;
+  const currentPeriodStart = subscription.current_period_start 
+    ? new Date(subscription.current_period_start * 1000).toISOString() 
+    : null;
+  const currentPeriodEnd = subscription.current_period_end 
+    ? new Date(subscription.current_period_end * 1000).toISOString() 
+    : null;
+
+  // Check if subscription is paused
+  const pauseCollection = subscription.pause_collection;
+  const isPaused = pauseCollection?.behavior === 'void' || status === 'paused';
+  const resumesAt = pauseCollection?.resumes_at 
+    ? new Date(pauseCollection.resumes_at * 1000).toISOString() 
+    : null;
+
+  // Find the subscription by Stripe subscription ID
+  const { data: existingSub, error: findError } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('platform_subscription_id', subscription.id)
+    .single();
+
+  const updateData = {
+    platform_subscription_id: subscription.id,
+    status: isPaused ? 'paused' : mapStripeStatus(status),
+    current_period_start: currentPeriodStart,
+    current_period_end: currentPeriodEnd,
+    paused_at: isPaused ? new Date().toISOString() : null,
+    resume_at: resumesAt,
+    updated_at: new Date().toISOString()
+  };
+
+  if (findError || !existingSub) {
+    // Try to find by customer ID
+    const { data: subByCustomer } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('stripe_customer_id', customerId)
+      .eq('platform', 'stripe')
+      .single();
+
+    if (subByCustomer) {
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update(updateData)
+        .eq('id', subByCustomer.id);
+
+      if (updateError) {
+        console.error('Error updating subscription:', updateError);
+      } else {
+        console.log(`Subscription ${subByCustomer.id} updated, status: ${updateData.status}`);
+      }
+
+      if (subByCustomer.user_id) {
+        await updateUserProfile(supabase, subByCustomer.user_id, updateData.status);
+      }
+    } else {
+      console.log('No existing subscription found for update');
+    }
+  } else {
+    const { error: updateError } = await supabase
+      .from('subscriptions')
+      .update(updateData)
+      .eq('id', existingSub.id);
+
+    if (updateError) {
+      console.error('Error updating subscription:', updateError);
+    } else {
+      console.log(`Subscription ${existingSub.id} updated, status: ${updateData.status}`);
+    }
+
+    if (existingSub.user_id) {
+      await updateUserProfile(supabase, existingSub.user_id, updateData.status);
+    }
+  }
+}
+
+// Handle subscription paused
+async function handleSubscriptionPaused(supabase: any, subscription: any) {
+  console.log('Processing subscription paused:', subscription.id);
+
+  const pauseCollection = subscription.pause_collection;
+  const resumesAt = pauseCollection?.resumes_at 
+    ? new Date(pauseCollection.resumes_at * 1000).toISOString() 
+    : null;
+
+  const { data: existingSub } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('platform_subscription_id', subscription.id)
+    .single();
+
+  if (existingSub) {
+    await supabase
+      .from('subscriptions')
+      .update({
+        status: 'paused',
+        paused_at: new Date().toISOString(),
+        resume_at: resumesAt,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingSub.id);
+
+    console.log(`Subscription ${existingSub.id} paused, resumes at: ${resumesAt}`);
+
+    if (existingSub.user_id) {
+      await updateUserProfile(supabase, existingSub.user_id, 'paused');
+    }
+  }
+}
+
+// Handle subscription resumed
+async function handleSubscriptionResumed(supabase: any, subscription: any) {
+  console.log('Processing subscription resumed:', subscription.id);
+
+  const currentPeriodEnd = subscription.current_period_end 
+    ? new Date(subscription.current_period_end * 1000).toISOString() 
+    : null;
+
+  const { data: existingSub } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('platform_subscription_id', subscription.id)
+    .single();
+
+  if (existingSub) {
+    await supabase
+      .from('subscriptions')
+      .update({
+        status: 'active',
+        paused_at: null,
+        resume_at: null,
+        current_period_end: currentPeriodEnd,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingSub.id);
+
+    console.log(`Subscription ${existingSub.id} resumed`);
+
+    if (existingSub.user_id) {
+      await updateUserProfile(supabase, existingSub.user_id, 'active');
+    }
+  }
+}
+
+// Handle subscription deletion/cancellation
+async function handleSubscriptionDeleted(supabase: any, subscription: any) {
+  console.log('Processing subscription deletion:', subscription.id);
+
+  const { data: existingSub, error: findError } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('platform_subscription_id', subscription.id)
+    .single();
+
+  if (existingSub) {
+    const { error: updateError } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'cancelled',
+        paused_at: null,
+        resume_at: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingSub.id);
+
+    if (updateError) {
+      console.error('Error cancelling subscription:', updateError);
+    } else {
+      console.log(`Subscription ${existingSub.id} cancelled`);
+    }
+
+    if (existingSub.user_id) {
+      await updateUserProfile(supabase, existingSub.user_id, 'cancelled');
+    }
+  } else {
+    const customerId = subscription.customer;
+    const { data: subByCustomer } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('stripe_customer_id', customerId)
+      .eq('platform', 'stripe')
+      .single();
+
+    if (subByCustomer) {
+      await supabase
+        .from('subscriptions')
+        .update({
+          status: 'cancelled',
+          paused_at: null,
+          resume_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subByCustomer.id);
+
+      if (subByCustomer.user_id) {
+        await updateUserProfile(supabase, subByCustomer.user_id, 'cancelled');
+      }
+    }
+  }
+}
+
+// Handle successful invoice payment (for renewals)
+async function handleInvoicePaymentSucceeded(supabase: any, invoice: any, supabaseUrl: string, supabaseServiceKey: string) {
+  console.log('Processing invoice payment succeeded:', invoice.id);
+
+  if (!invoice.subscription) {
+    console.log('Not a subscription invoice, skipping');
+    return;
+  }
+
+  const subscriptionId = invoice.subscription;
+  const customerId = invoice.customer;
+  const customerEmail = invoice.customer_email;
+  const customerName = invoice.customer_name;
+  const amountPaid = invoice.amount_paid ? invoice.amount_paid / 100 : 0;
+
+  const { data: existingSub } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('platform_subscription_id', subscriptionId)
+    .single();
+
+  if (existingSub) {
+    const productId = `com.sayarat.subscription.${existingSub.tier}.monthly`;
+    
+    await supabase
+      .from('purchases')
+      .insert({
+        user_id: existingSub.user_id,
+        product_id: productId,
+        transaction_id: invoice.id,
+        platform: 'stripe',
+        amount: amountPaid,
+        currency: invoice.currency?.toUpperCase() || 'USD',
+        status: 'completed',
+        metadata: {
+          type: 'renewal',
+          stripe_customer_id: customerId,
+          stripe_invoice_id: invoice.id,
+          stripe_subscription_id: subscriptionId,
+          billing_reason: invoice.billing_reason,
+          customer_email: customerEmail
+        }
+      });
+
+    const periodEnd = invoice.lines?.data?.[0]?.period?.end;
+    if (periodEnd) {
+      await supabase
+        .from('subscriptions')
+        .update({
+          status: 'active',
+          current_period_end: new Date(periodEnd * 1000).toISOString(),
+          paused_at: null,
+          resume_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingSub.id);
+    }
+
+    console.log(`Renewal payment recorded for subscription ${existingSub.id}`);
+
+    if (existingSub.user_id) {
+      await updateUserProfile(supabase, existingSub.user_id, 'active');
+    }
+
+    if (customerEmail && invoice.billing_reason === 'subscription_cycle') {
+      await sendEmailReceipt(supabaseUrl, supabaseServiceKey, {
+        email: customerEmail,
+        customerName: customerName,
+        productId: productId,
+        transactionId: invoice.id,
+        amount: amountPaid,
+        currency: invoice.currency?.toUpperCase() || 'USD',
+        purchaseDate: new Date().toISOString(),
+        isRenewal: true
+      });
+    }
+  }
+}
+
+// Handle failed invoice payment
+async function handleInvoicePaymentFailed(supabase: any, invoice: any) {
+  console.log('Processing invoice payment failed:', invoice.id);
+
+  if (!invoice.subscription) {
+    return;
+  }
+
+  const subscriptionId = invoice.subscription;
+
+  const { data: existingSub } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('platform_subscription_id', subscriptionId)
+    .single();
+
+  if (existingSub) {
+    await supabase
+      .from('subscriptions')
+      .update({
+        status: 'past_due',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingSub.id);
+
+    console.log(`Subscription ${existingSub.id} marked as past_due`);
+
+    if (existingSub.user_id) {
+      await updateUserProfile(supabase, existingSub.user_id, 'past_due');
+    }
+  }
+}
+
+// Handle charge refunded (from Stripe dashboard or API)
+async function handleChargeRefunded(supabase: any, charge: any) {
+  console.log('Processing charge refunded:', charge.id);
+
+  const paymentIntent = charge.payment_intent;
+  const refundAmount = charge.amount_refunded ? charge.amount_refunded / 100 : 0;
+  const isFullRefund = charge.refunded;
+
+  // Find the purchase by payment intent
+  const { data: purchase } = await supabase
+    .from('purchases')
+    .select('*')
+    .or(`transaction_id.eq.${paymentIntent},metadata->>payment_intent.eq.${paymentIntent}`)
+    .single();
+
+  if (purchase && purchase.refund_status !== 'refunded') {
+    await supabase
+      .from('purchases')
+      .update({
+        refund_status: isFullRefund ? 'refunded' : 'partially_refunded',
+        refund_amount: refundAmount,
+        refunded_at: new Date().toISOString(),
+        status: 'refunded',
+        metadata: {
+          ...purchase.metadata,
+          stripe_refund: {
+            charge_id: charge.id,
+            amount_refunded: refundAmount,
+            refunded_at: new Date().toISOString()
+          }
+        }
+      })
+      .eq('id', purchase.id);
+
+    console.log(`Purchase ${purchase.id} marked as refunded via Stripe webhook`);
+  }
+}
+
+// Helper function to map Stripe status to our status
+function mapStripeStatus(stripeStatus: string): string {
+  const statusMap: Record<string, string> = {
+    'active': 'active',
+    'past_due': 'past_due',
+    'canceled': 'cancelled',
+    'unpaid': 'past_due',
+    'incomplete': 'pending',
+    'incomplete_expired': 'expired',
+    'trialing': 'active',
+    'paused': 'paused'
+  };
+  return statusMap[stripeStatus] || stripeStatus;
+}
+
+// Helper function to update user profile based on subscription status
+async function updateUserProfile(supabase: any, userId: string, status: string) {
+  const isActive = status === 'active';
+  const isPaused = status === 'paused';
+  
+  await supabase
+    .from('profiles')
+    .update({
+      subscription_status: status,
+      // Keep dealer status for paused subscriptions (they still have access until resume)
+      is_dealer: isActive || isPaused,
+      ...(isActive || isPaused ? {} : { dealer_tier: null })
+    })
+    .eq('id', userId);
+
+  console.log(`User profile ${userId} updated, subscription_status: ${status}`);
+}

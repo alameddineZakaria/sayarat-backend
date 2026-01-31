@@ -1,0 +1,180 @@
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+interface PushNotificationPayload {
+  userId: string;
+  title: string;
+  titleAr?: string;
+  body: string;
+  bodyAr?: string;
+  data?: Record<string, any>;
+  type?: 'new_message' | 'price_drop' | 'saved_search_match' | 'offer' | 'system';
+}
+
+interface ExpoPushMessage {
+  to: string;
+  sound: string;
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+  channelId?: string;
+  priority?: 'default' | 'normal' | 'high';
+  badge?: number;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const payload: PushNotificationPayload = await req.json();
+    const { userId, title, titleAr, body, bodyAr, data, type } = payload;
+
+    if (!userId || !title || !body) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: userId, title, body' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Get Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Get user's push tokens
+    const tokensResponse = await fetch(
+      `${supabaseUrl}/rest/v1/push_tokens?user_id=eq.${userId}&is_active=eq.true&select=token,device_type`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    if (!tokensResponse.ok) {
+      throw new Error('Failed to fetch push tokens');
+    }
+
+    const tokens = await tokensResponse.json();
+
+    if (!tokens || tokens.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, message: 'No push tokens found for user', sent: 0 }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Get user's language preference (default to English)
+    const userResponse = await fetch(
+      `${supabaseUrl}/rest/v1/user_preferences?user_id=eq.${userId}&select=language`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    let userLanguage = 'en';
+    if (userResponse.ok) {
+      const prefs = await userResponse.json();
+      if (prefs && prefs.length > 0 && prefs[0].language) {
+        userLanguage = prefs[0].language;
+      }
+    }
+
+    // Select title and body based on language
+    const finalTitle = userLanguage === 'ar' && titleAr ? titleAr : title;
+    const finalBody = userLanguage === 'ar' && bodyAr ? bodyAr : body;
+
+    // Determine channel based on notification type
+    let channelId = 'default';
+    if (type === 'new_message') channelId = 'messages';
+    else if (type === 'price_drop') channelId = 'price_alerts';
+    else if (type === 'saved_search_match') channelId = 'saved_searches';
+
+    // Prepare Expo push messages
+    const messages: ExpoPushMessage[] = tokens.map((tokenData: { token: string }) => ({
+      to: tokenData.token,
+      sound: 'default',
+      title: finalTitle,
+      body: finalBody,
+      data: {
+        ...data,
+        type,
+        timestamp: new Date().toISOString(),
+      },
+      channelId,
+      priority: type === 'new_message' || type === 'offer' ? 'high' : 'default',
+    }));
+
+    // Send to Expo Push Notification Service
+    const expoPushResponse = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(messages),
+    });
+
+    if (!expoPushResponse.ok) {
+      const errorText = await expoPushResponse.text();
+      throw new Error(`Expo push failed: ${errorText}`);
+    }
+
+    const expoPushResult = await expoPushResponse.json();
+
+    // Check for any errors in the response
+    const results = expoPushResult.data || [];
+    const successCount = results.filter((r: any) => r.status === 'ok').length;
+    const errorCount = results.filter((r: any) => r.status === 'error').length;
+
+    // Handle invalid tokens (remove them from database)
+    const invalidTokens = results
+      .filter((r: any, i: number) => r.status === 'error' && r.details?.error === 'DeviceNotRegistered')
+      .map((_: any, i: number) => tokens[i]?.token)
+      .filter(Boolean);
+
+    if (invalidTokens.length > 0) {
+      // Mark invalid tokens as inactive
+      for (const token of invalidTokens) {
+        await fetch(
+          `${supabaseUrl}/rest/v1/push_tokens?token=eq.${encodeURIComponent(token)}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ is_active: false }),
+          }
+        );
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        sent: successCount,
+        errors: errorCount,
+        invalidTokensRemoved: invalidTokens.length,
+      }),
+      { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+
+  } catch (error) {
+    console.error('Push notification error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+  }
+});

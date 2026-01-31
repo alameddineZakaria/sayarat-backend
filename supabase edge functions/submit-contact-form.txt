@@ -1,0 +1,101 @@
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY') || '';
+    const emailFrom = Deno.env.get('EMAIL_FROM') || 'noreply@sayarat.com';
+
+    const body = await req.json();
+    const name = body.name || '';
+    const email = body.email || '';
+    const subject = body.subject || '';
+    const message = body.message || '';
+    const language = body.language || 'en';
+
+    if (!name || !email || !subject || !message) {
+      return new Response(
+        JSON.stringify({ success: false, error: language === 'ar' ? 'جميع الحقول مطلوبة' : 'All fields are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return new Response(
+        JSON.stringify({ success: false, error: language === 'ar' ? 'بريد إلكتروني غير صالح' : 'Invalid email address' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Store in database
+    const dbResponse = await fetch(supabaseUrl + '/rest/v1/contact_messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': supabaseServiceKey,
+        'Authorization': 'Bearer ' + supabaseServiceKey,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({ name, email, subject, message, status: 'new' })
+    });
+
+    let messageId = 'unknown';
+    if (dbResponse.ok) {
+      const data = await dbResponse.json();
+      messageId = data[0]?.id || 'saved';
+    }
+
+    // Send emails if SendGrid configured
+    if (sendgridApiKey) {
+      // Support notification
+      await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + sendgridApiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: 'support@sayarat.com' }], subject: '[Sayarat] New contact: ' + subject }],
+          from: { email: emailFrom, name: 'Sayarat' },
+          content: [{ type: 'text/html', value: '<h2>New Contact Message</h2><p><b>From:</b> ' + name + ' (' + email + ')</p><p><b>Subject:</b> ' + subject + '</p><p><b>Message:</b></p><p>' + message + '</p>' }]
+        })
+      }).catch(() => {});
+
+      // User confirmation
+      await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + sendgridApiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email }], subject: language === 'ar' ? 'شكراً لتواصلك - سيارات' : 'Thank you for contacting Sayarat' }],
+          from: { email: emailFrom, name: 'Sayarat' },
+          content: [{ type: 'text/html', value: language === 'ar' 
+            ? '<h2>شكراً ' + name + '</h2><p>استلمنا رسالتك وسنرد قريباً.</p>' 
+            : '<h2>Thank you ' + name + '</h2><p>We received your message and will respond soon.</p>' }]
+        })
+      }).catch(() => {});
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        message: language === 'ar' ? 'تم إرسال رسالتك بنجاح' : 'Message sent successfully',
+        id: messageId
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: 'An error occurred' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

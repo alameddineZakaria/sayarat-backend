@@ -1,0 +1,337 @@
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+interface MessageNotificationPayload {
+  recipientId: string;
+  senderId: string;
+  senderName: string;
+  messageContent: string;
+  conversationId: string;
+  vehicleTitle?: string;
+}
+
+interface ExpoPushMessage {
+  to: string;
+  sound: 'default' | null;
+  title: string;
+  body: string;
+  data: Record<string, any>;
+  channelId: string;
+  priority: 'default' | 'normal' | 'high';
+  badge?: number;
+}
+
+// Check if current time is within quiet hours
+function isInQuietHours(prefs: any): boolean {
+  if (!prefs.quiet_hours_enabled) return false;
+  
+  const now = new Date();
+  const currentDay = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][now.getDay()];
+  
+  // Check if current day is in quiet hours days
+  const quietDays = prefs.quiet_hours_days || [];
+  if (!quietDays.includes(currentDay)) return false;
+  
+  // Parse times
+  const startParts = (prefs.quiet_hours_start || '22:00:00').split(':');
+  const endParts = (prefs.quiet_hours_end || '08:00:00').split(':');
+  
+  const startHour = parseInt(startParts[0], 10);
+  const endHour = parseInt(endParts[0], 10);
+  const currentHour = now.getHours();
+  
+  // Handle overnight quiet hours (e.g., 22:00 to 08:00)
+  if (startHour > endHour) {
+    return currentHour >= startHour || currentHour < endHour;
+  }
+  
+  // Same day quiet hours (e.g., 14:00 to 18:00)
+  return currentHour >= startHour && currentHour < endHour;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const payload: MessageNotificationPayload = await req.json();
+    const { recipientId, senderId, senderName, messageContent, conversationId, vehicleTitle } = payload;
+
+    console.log('Received message notification request:', { recipientId, senderId, conversationId });
+
+    if (!recipientId || !senderId || !messageContent || !conversationId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Check if conversation is muted for recipient
+    const mutedResponse = await fetch(
+      `${supabaseUrl}/rest/v1/muted_conversations?user_id=eq.${recipientId}&conversation_id=eq.${conversationId}&select=id,muted_until`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    if (mutedResponse.ok) {
+      const mutedData = await mutedResponse.json();
+      if (mutedData && mutedData.length > 0) {
+        const muted = mutedData[0];
+        // Check if still muted (muted_until is null = forever, or muted_until > now)
+        if (!muted.muted_until || new Date(muted.muted_until) > new Date()) {
+          console.log('Conversation is muted for recipient');
+          return new Response(
+            JSON.stringify({ success: true, message: 'Conversation is muted', sent: 0 }),
+            { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+          );
+        }
+      }
+    }
+
+    // Check if recipient has message notifications enabled and quiet hours
+    const prefsResponse = await fetch(
+      `${supabaseUrl}/rest/v1/user_preferences?user_id=eq.${recipientId}&select=message_notifications,push_enabled,language,quiet_hours_enabled,quiet_hours_start,quiet_hours_end,quiet_hours_days`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    let shouldSend = true;
+    let userLanguage = 'en';
+
+    if (prefsResponse.ok) {
+      const prefs = await prefsResponse.json();
+      if (prefs && prefs.length > 0) {
+        const userPrefs = prefs[0];
+        if (userPrefs.push_enabled === false || userPrefs.message_notifications === false) {
+          shouldSend = false;
+        }
+        userLanguage = userPrefs.language || 'en';
+        
+        // Check quiet hours
+        if (shouldSend && isInQuietHours(userPrefs)) {
+          console.log('User is in quiet hours, skipping push notification');
+          // Still store the notification, just don't send push
+          shouldSend = false;
+        }
+      }
+    }
+
+    // Store notification in database regardless of push status
+    try {
+      // Format message preview
+      let messagePreview = messageContent;
+      if (messageContent.startsWith('[IMAGE:')) {
+        messagePreview = userLanguage === 'ar' ? 'صورة' : 'Photo';
+      } else if (messageContent.startsWith('[VOICE:')) {
+        messagePreview = userLanguage === 'ar' ? 'رسالة صوتية' : 'Voice message';
+      } else if (messageContent.length > 100) {
+        messagePreview = messageContent.substring(0, 100) + '...';
+      }
+
+      const title = senderName || (userLanguage === 'ar' ? 'رسالة جديدة' : 'New Message');
+
+      await fetch(
+        `${supabaseUrl}/rest/v1/notifications`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
+            user_id: recipientId,
+            type: 'new_message',
+            title,
+            message: messagePreview,
+            data: {
+              conversationId,
+              senderId,
+              senderName,
+              url: `/chat/${conversationId}`,
+            },
+            is_read: false,
+          }),
+        }
+      );
+      console.log('Notification record created');
+    } catch (notifError) {
+      console.error('Error creating notification record:', notifError);
+    }
+
+    if (!shouldSend) {
+      console.log('Notifications disabled or in quiet hours for user:', recipientId);
+      return new Response(
+        JSON.stringify({ success: true, message: 'Notifications disabled or in quiet hours', sent: 0 }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Get recipient's push tokens
+    const tokensResponse = await fetch(
+      `${supabaseUrl}/rest/v1/push_tokens?user_id=eq.${recipientId}&is_active=eq.true&select=token,device_type`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    if (!tokensResponse.ok) {
+      console.error('Failed to fetch push tokens');
+      return new Response(
+        JSON.stringify({ success: true, message: 'Failed to fetch push tokens', sent: 0 }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    const tokens = await tokensResponse.json();
+
+    if (!tokens || tokens.length === 0) {
+      console.log('No push tokens found for user:', recipientId);
+      return new Response(
+        JSON.stringify({ success: true, message: 'No push tokens found', sent: 0 }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    console.log(`Found ${tokens.length} push token(s) for user`);
+
+    // Count unread messages for badge
+    const unreadResponse = await fetch(
+      `${supabaseUrl}/rest/v1/messages?receiver_id=eq.${recipientId}&is_read=eq.false&select=id`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    let badgeCount = 1;
+    if (unreadResponse.ok) {
+      const unreadMessages = await unreadResponse.json();
+      badgeCount = unreadMessages?.length || 1;
+    }
+
+    // Format message preview
+    let messagePreview = messageContent;
+    if (messageContent.startsWith('[IMAGE:')) {
+      messagePreview = userLanguage === 'ar' ? 'صورة' : 'Photo';
+    } else if (messageContent.startsWith('[VOICE:')) {
+      messagePreview = userLanguage === 'ar' ? 'رسالة صوتية' : 'Voice message';
+    } else if (messageContent.length > 100) {
+      messagePreview = messageContent.substring(0, 100) + '...';
+    }
+
+    // Prepare notification content
+    const title = senderName || (userLanguage === 'ar' ? 'رسالة جديدة' : 'New Message');
+    const body = vehicleTitle 
+      ? `${messagePreview}\n${vehicleTitle}`
+      : messagePreview;
+
+    // Prepare Expo push messages
+    const messages: ExpoPushMessage[] = tokens.map((tokenData: { token: string }) => ({
+      to: tokenData.token,
+      sound: 'default',
+      title,
+      body,
+      data: {
+        type: 'new_message',
+        conversationId,
+        senderId,
+        senderName,
+        vehicleTitle,
+        timestamp: new Date().toISOString(),
+        url: `/chat/${conversationId}`,
+      },
+      channelId: 'messages',
+      priority: 'high',
+      badge: badgeCount,
+    }));
+
+    console.log('Sending push notifications to Expo...');
+
+    // Send to Expo Push Notification Service
+    const expoPushResponse = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(messages),
+    });
+
+    if (!expoPushResponse.ok) {
+      const errorText = await expoPushResponse.text();
+      console.error('Expo push failed:', errorText);
+      throw new Error(`Expo push failed: ${errorText}`);
+    }
+
+    const expoPushResult = await expoPushResponse.json();
+    const results = expoPushResult.data || [];
+    const successCount = results.filter((r: any) => r.status === 'ok').length;
+    const errorCount = results.filter((r: any) => r.status === 'error').length;
+
+    console.log(`Push notification results: ${successCount} success, ${errorCount} errors`);
+
+    // Handle invalid tokens
+    const invalidTokens = results
+      .filter((r: any, i: number) => r.status === 'error' && r.details?.error === 'DeviceNotRegistered')
+      .map((_: any, i: number) => tokens[i]?.token)
+      .filter(Boolean);
+
+    if (invalidTokens.length > 0) {
+      console.log(`Marking ${invalidTokens.length} invalid token(s) as inactive`);
+      for (const token of invalidTokens) {
+        await fetch(
+          `${supabaseUrl}/rest/v1/push_tokens?token=eq.${encodeURIComponent(token)}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ is_active: false }),
+          }
+        );
+      }
+    }
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        sent: successCount,
+        errors: errorCount,
+        invalidTokensRemoved: invalidTokens.length,
+      }),
+      { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+
+  } catch (error: any) {
+    console.error('Message notification error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+  }
+});

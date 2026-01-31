@@ -1,0 +1,110 @@
+
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+const SUBSCRIPTION_PRICES = {
+  'basic': 'price_1SlnVGQm9R71HIbVsYTOoNFj',
+  'pro': 'price_1SlnVGQm9R71HIbV47U0iYv4',
+  'premium': 'price_1SlnVGQm9R71HIbVXllHONm5'
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const gatewayApiKey = Deno.env.get("GATEWAY_API_KEY");
+    if (!gatewayApiKey) throw new Error("Gateway API key not configured");
+
+    const { email, name, action, customerId: existingCustomerId, tier } = await req.json();
+
+    // STEP 1: Create customer and SetupIntent to collect payment method
+    if (action === 'create-setup-intent' || !action) {
+      if (!email) throw new Error("Email is required");
+      if (!tier || !SUBSCRIPTION_PRICES[tier as keyof typeof SUBSCRIPTION_PRICES]) {
+        throw new Error("Invalid subscription tier");
+      }
+
+      // Check if customer exists
+      const customersResponse = await fetch(`https://stripe.gateway.fastrouter.io/payments/customers?email=${encodeURIComponent(email)}`, {
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': gatewayApiKey }
+      });
+      const customersData = await customersResponse.json();
+      
+      let customerId;
+      if (customersData.data?.length > 0) {
+        customerId = customersData.data[0].id;
+      } else {
+        // Create new customer
+        const createCustomerResponse = await fetch('https://stripe.gateway.fastrouter.io/payments/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-API-Key': gatewayApiKey },
+          body: JSON.stringify({ email, name: name || email.split('@')[0] })
+        });
+        const newCustomer = await createCustomerResponse.json();
+        if (!createCustomerResponse.ok) throw new Error(newCustomer.error || 'Failed to create customer');
+        customerId = newCustomer.id;
+      }
+
+      // Create SetupIntent to collect payment method
+      const priceId = SUBSCRIPTION_PRICES[tier as keyof typeof SUBSCRIPTION_PRICES];
+      const setupIntentResponse = await fetch('https://stripe.gateway.fastrouter.io/payments/setup-intents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': gatewayApiKey },
+        body: JSON.stringify({ 
+          customer: customerId, 
+          metadata: { 
+            price_id: priceId,
+            tier: tier
+          } 
+        })
+      });
+      const setupIntent = await setupIntentResponse.json();
+      if (!setupIntentResponse.ok) throw new Error(setupIntent.error || 'Failed to create setup intent');
+
+      return new Response(JSON.stringify({
+        clientSecret: setupIntent.clientSecret,
+        customerId,
+        setupIntentId: setupIntent.id,
+        tier
+      }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    // STEP 2: Create subscription after payment method is saved
+    if (action === 'activate-subscription') {
+      if (!existingCustomerId) throw new Error("Customer ID is required");
+      if (!tier || !SUBSCRIPTION_PRICES[tier as keyof typeof SUBSCRIPTION_PRICES]) {
+        throw new Error("Invalid subscription tier");
+      }
+
+      const priceId = SUBSCRIPTION_PRICES[tier as keyof typeof SUBSCRIPTION_PRICES];
+      
+      const subscriptionResponse = await fetch('https://stripe.gateway.fastrouter.io/payments/subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': gatewayApiKey },
+        body: JSON.stringify({ 
+          customer: existingCustomerId, 
+          items: [{ price: priceId }],
+          metadata: { tier: tier }
+        })
+      });
+      const subscription = await subscriptionResponse.json();
+      if (!subscriptionResponse.ok) throw new Error(subscription.error || 'Failed to create subscription');
+
+      return new Response(JSON.stringify({
+        subscriptionId: subscription.id,
+        status: subscription.status,
+        tier
+      }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    throw new Error("Invalid action");
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+});

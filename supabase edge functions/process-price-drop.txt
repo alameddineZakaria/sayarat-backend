@@ -1,0 +1,133 @@
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+};
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { vehicle_id, old_price, new_price } = await req.json();
+
+    if (!vehicle_id || old_price === undefined || new_price === undefined) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Only process if price dropped
+    if (new_price >= old_price) {
+      return new Response(
+        JSON.stringify({ message: 'Price did not drop, no alerts sent' }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Record price history
+    await supabase.from('vehicle_price_history').insert({
+      vehicle_id,
+      old_price,
+      new_price
+    });
+
+    // Get vehicle details
+    const { data: vehicle } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('id', vehicle_id)
+      .single();
+
+    if (!vehicle) {
+      return new Response(
+        JSON.stringify({ error: 'Vehicle not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
+
+    // Find all active price alerts for this vehicle
+    const { data: vehicleAlerts } = await supabase
+      .from('price_alerts')
+      .select('*')
+      .eq('vehicle_id', vehicle_id)
+      .eq('is_active', true);
+
+    // Find all active search-based alerts that match this vehicle
+    const { data: searchAlerts } = await supabase
+      .from('price_alerts')
+      .select('*')
+      .eq('alert_type', 'search')
+      .eq('is_active', true);
+
+    const matchingSearchAlerts = (searchAlerts || []).filter(alert => {
+      const criteria = alert.search_criteria;
+      if (!criteria) return false;
+      
+      // Check if vehicle matches search criteria
+      if (criteria.make && criteria.make !== vehicle.make) return false;
+      if (criteria.model && criteria.model !== vehicle.model) return false;
+      if (criteria.min_year && vehicle.year < criteria.min_year) return false;
+      if (criteria.max_year && vehicle.year > criteria.max_year) return false;
+      if (criteria.max_price && new_price > criteria.max_price) return false;
+      
+      return true;
+    });
+
+    const allAlerts = [...(vehicleAlerts || []), ...matchingSearchAlerts];
+    const priceDrop = old_price - new_price;
+    const priceDropPercent = ((priceDrop / old_price) * 100).toFixed(1);
+
+    // Create notifications for each alert
+    const notifications = allAlerts.map(alert => ({
+      user_id: alert.user_id,
+      type: 'price_drop',
+      title: 'Price Drop Alert!',
+      message: `${vehicle.year} ${vehicle.make} ${vehicle.model} dropped from ${old_price.toLocaleString()} SAR to ${new_price.toLocaleString()} SAR (${priceDropPercent}% off)`,
+      data: {
+        vehicle_id: vehicle.id,
+        vehicle_title: `${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+        old_price,
+        new_price,
+        price_drop: priceDrop,
+        price_drop_percent: parseFloat(priceDropPercent),
+        image_url: vehicle.images?.[0]
+      }
+    }));
+
+    if (notifications.length > 0) {
+      await supabase.from('notifications').insert(notifications);
+
+      // Update last_notified_at for all alerts
+      const alertIds = allAlerts.map(a => a.id);
+      await supabase
+        .from('price_alerts')
+        .update({ last_notified_at: new Date().toISOString() })
+        .in('id', alertIds);
+    }
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        notifications_sent: notifications.length,
+        price_drop: priceDrop,
+        price_drop_percent: priceDropPercent
+      }),
+      { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+    );
+  }
+});
