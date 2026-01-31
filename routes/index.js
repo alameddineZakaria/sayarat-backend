@@ -19,4 +19,5 @@ router.use('/vincario-lookup', require('./vincario-lookup'));
 router.use('/vin-audit-lookup', require('./vinaudit-lookup'));
 router.use('/verify-google-purchase', require('./verify-google-purchase'));
 router.use('/verify-apple-receipt', require('./verify-apple-receipt'));
+router.use('/process-price-drop', require('./process-price-drop'));
 module.exports = router;
