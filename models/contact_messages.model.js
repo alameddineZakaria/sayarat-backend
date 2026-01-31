@@ -1,61 +1,65 @@
 module.exports = (sequelize, DataTypes) => {
   const ContactMessages = sequelize.define("ContactMessages", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      type: DataTypes.UUID,
+      allowNull: false,
       primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
     user_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     name: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     email: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     subject: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     message: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     status: {
       type: DataTypes.TEXT,
       allowNull: true,
+      defaultValue: "new"
     },
     responded_at: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     response: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     created_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     phone: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     assigned_to: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     responded_by: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: true
+    }
   }, {
     tableName: "contact_messages",
     timestamps: false,
+    underscored: true,
   });
 
   return ContactMessages;

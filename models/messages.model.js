@@ -1,41 +1,71 @@
 module.exports = (sequelize, DataTypes) => {
   const Messages = sequelize.define("Messages", {
-    topic: {
-      type: DataTypes.TEXT,
+    id: {
+      type: DataTypes.UUID,
       allowNull: false,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
-    extension: {
+    conversation_id: {
+      type: DataTypes.UUID,
+      allowNull: true
+    },
+    sender_id: {
+      type: DataTypes.UUID,
+      allowNull: true
+    },
+    content: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true
     },
-    payload: {
+    message_type: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: "text"
+    },
+    attachments: {
       type: DataTypes.JSONB,
       allowNull: true,
+      defaultValue: "[]"
     },
-    event: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    private: {
+    is_read: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
+      defaultValue: false
     },
-    updated_at: {
+    read_at: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true
     },
-    inserted_at: {
+    created_at: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
+      defaultValue: DataTypes.NOW
     },
-    id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
+    attachment_url: {
+      type: DataTypes.TEXT,
+      allowNull: true
     },
+    attachment_type: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    voice_url: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    voice_duration: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    deleted_at: {
+      type: DataTypes.DATE,
+      allowNull: true
+    }
   }, {
     tableName: "messages",
     timestamps: false,
+    underscored: true,
   });
 
   return Messages;

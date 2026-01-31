@@ -1,78 +1,82 @@
 module.exports = (sequelize, DataTypes) => {
   const UserSessions = sequelize.define("UserSessions", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      type: DataTypes.UUID,
+      allowNull: false,
       primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
     user_id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
+      type: DataTypes.UUID,
+      allowNull: false
     },
     session_token: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     device_type: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     device_name: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     os: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     browser: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     ip_address: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     location: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     is_current: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
+      defaultValue: false
     },
     last_active_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     expires_at: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     created_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     device_id: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     os_version: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     app_version: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     last_active: {
       type: DataTypes.DATE,
-      allowNull: true,
-    },
+      allowNull: true
+    }
   }, {
     tableName: "user_sessions",
     timestamps: false,
+    underscored: true,
   });
 
   return UserSessions;

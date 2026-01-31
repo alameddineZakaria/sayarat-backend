@@ -1,62 +1,67 @@
 module.exports = (sequelize, DataTypes) => {
   const UserBans = sequelize.define("UserBans", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      type: DataTypes.UUID,
+      allowNull: false,
       primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
     user_id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
+      type: DataTypes.UUID,
+      allowNull: false
     },
     banned_by: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     reason: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     ban_type: {
       type: DataTypes.TEXT,
       allowNull: true,
+      defaultValue: "temporary"
     },
     expires_at: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     is_active: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
+      defaultValue: true
     },
     notes: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     created_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     updated_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     lifted_at: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     lifted_by: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     lift_reason: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }
   }, {
     tableName: "user_bans",
     timestamps: false,
+    underscored: true,
   });
 
   return UserBans;

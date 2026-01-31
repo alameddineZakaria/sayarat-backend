@@ -2,77 +2,82 @@ module.exports = (sequelize, DataTypes) => {
   const VinReportPurchases = sequelize.define("VinReportPurchases", {
     id: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      allowNull: false,
       primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
     user_id: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
+      allowNull: false
     },
     vin: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     vehicle_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     listing_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     report_type: {
       type: DataTypes.TEXT,
       allowNull: true,
+      defaultValue: "standard"
     },
     purchase_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     amount: {
-      type: DataTypes.DECIMAL,
-      allowNull: false,
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false
     },
     report_url: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     report_data: {
       type: DataTypes.JSONB,
-      allowNull: true,
+      allowNull: true
     },
     provider: {
       type: DataTypes.TEXT,
       allowNull: true,
+      defaultValue: "carfax"
     },
     status: {
       type: DataTypes.TEXT,
       allowNull: true,
+      defaultValue: "pending"
     },
     error_message: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     expires_at: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     created_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     report_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     payment_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: true
+    }
   }, {
     tableName: "vin_report_purchases",
     timestamps: false,
+    underscored: true,
   });
 
   return VinReportPurchases;

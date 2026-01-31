@@ -1,78 +1,83 @@
 module.exports = (sequelize, DataTypes) => {
   const ScheduledAdminActions = sequelize.define("ScheduledAdminActions", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      type: DataTypes.UUID,
+      allowNull: false,
       primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
     admin_id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
-      primaryKey: true,
+      type: DataTypes.UUID,
+      allowNull: false
     },
     action_type: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     target_type: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     target_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     action_data: {
       type: DataTypes.JSONB,
       allowNull: true,
+      defaultValue: "{}"
     },
     scheduled_for: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: false
     },
     status: {
       type: DataTypes.TEXT,
       allowNull: true,
+      defaultValue: "pending"
     },
     result: {
       type: DataTypes.JSONB,
-      allowNull: true,
+      allowNull: true
     },
     error_message: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     executed_at: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     created_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     updated_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     parameters: {
       type: DataTypes.JSONB,
-      allowNull: true,
+      allowNull: true
     },
     created_by: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     cancelled_at: {
       type: DataTypes.DATE,
-      allowNull: true,
+      allowNull: true
     },
     cancelled_by: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
+      type: DataTypes.UUID,
+      allowNull: true
+    }
   }, {
     tableName: "scheduled_admin_actions",
     timestamps: false,
+    underscored: true,
   });
 
   return ScheduledAdminActions;

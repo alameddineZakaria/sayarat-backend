@@ -1,93 +1,97 @@
 module.exports = (sequelize, DataTypes) => {
   const AnalyticsEvents = sequelize.define("AnalyticsEvents", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      type: DataTypes.UUID,
+      allowNull: false,
       primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
     user_id: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     session_id: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     event_type: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     event_category: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     event_action: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     event_label: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     event_value: {
-      type: DataTypes.DECIMAL,
-      allowNull: true,
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true
     },
     page_url: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     referrer: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     device_type: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     os: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     browser: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     ip_address: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     location: {
       type: DataTypes.JSONB,
-      allowNull: true,
+      allowNull: true
     },
     metadata: {
       type: DataTypes.JSONB,
       allowNull: true,
+      defaultValue: "{}"
     },
     created_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     event_name: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     properties: {
       type: DataTypes.JSONB,
-      allowNull: true,
+      allowNull: true
     },
     platform: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     app_version: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
+      allowNull: true
+    }
   }, {
     tableName: "analytics_events",
     timestamps: false,
+    underscored: true,
   });
 
   return AnalyticsEvents;

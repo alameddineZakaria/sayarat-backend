@@ -1,45 +1,51 @@
 module.exports = (sequelize, DataTypes) => {
   const SiteSettings = sequelize.define("SiteSettings", {
     id: {
-         type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4, // gen_random_uuid()
+      type: DataTypes.UUID,
+      allowNull: false,
       primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
     },
     key: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: false
     },
     value: {
       type: DataTypes.JSONB,
-      allowNull: false,
+      allowNull: false
     },
     description: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: true
     },
     category: {
       type: DataTypes.TEXT,
       allowNull: true,
+      defaultValue: "general"
     },
     is_public: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
+      defaultValue: false
     },
     updated_by: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.UUID,
+      allowNull: true
     },
     created_at: {
       type: DataTypes.DATE,
       allowNull: true,
+      defaultValue: DataTypes.NOW
     },
     updated_at: {
       type: DataTypes.DATE,
       allowNull: true,
-    },
+      defaultValue: DataTypes.NOW
+    }
   }, {
     tableName: "site_settings",
     timestamps: false,
+    underscored: true,
   });
 
   return SiteSettings;
