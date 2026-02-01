@@ -1,23 +1,73 @@
-const express = require('express');
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+
 const router = express.Router();
 
-// Import your route modules
-router.use('/send-otp-sms', require('./sent-otp-sms'));
-router.use('/activate-boost', require('./activate-boost'));
-router.use('/admin-analytics', require('./admin-analytics'));
-router.use('/admin-clear-chat', require('./admin-clear-chat'));
-router.use('/function', require('./generic-query-runner'));
-router.use('/admin-messages', require('./admin-messages'));
-router.use('/ai-analyze-vehicle', require('./ai-analyze-vehicle'));
-router.use('/photo-tagger', require('./photo-tagger'));
-router.use('/vin/decode', require('./auto-dev-vin-decode'));
-router.use('/carfaxdeals-history', require('./carfaxdeals-history'));
-router.use('/carsxe', require('./carsxe-history'));
-router.use('/check-expiring', require('./check-expiring-offers'));
-router.use('/check-saved-search-matches', require('./check-saved-search-matches'));
-router.use('/vincario-lookup', require('./vincario-lookup'));
-router.use('/vin-audit-lookup', require('./vinaudit-lookup'));
-router.use('/verify-google-purchase', require('./verify-google-purchase'));
-router.use('/verify-apple-receipt', require('./verify-apple-receipt'));
-router.use('/process-price-drop', require('./process-price-drop'));
+// If you want a different base, change this in app.js where you mount routes.
+// Example: app.use('/api', routes)
+const ROUTES_DIR = __dirname;
+
+/**
+ * Convert filename -> mount path.
+ * Example:
+ *   "admin-messages.js" => "/admin-messages"
+ *   "stripe-webhook.js" => "/stripe-webhook"
+ *
+ * You can customize this mapping if you want prettier URLs.
+ */
+function fileToMountPath(file) {
+  const base = file.replace(/\.js$/i, "");
+  return `/${base}`;
+}
+
+function safeRequireRoute(fullPath) {
+  const mod = require(fullPath);
+
+  // Most of your route files export a router directly:
+  // module.exports = router;
+  if (typeof mod === "function") return mod;      // router is a function
+  if (mod && typeof mod === "object" && typeof mod.handle === "function") return mod; // express router
+
+  // Some people export { router } — support that too
+  if (mod && mod.router && typeof mod.router.handle === "function") return mod.router;
+
+  return null;
+}
+
+// Load all route files except index.js
+const files = fs
+  .readdirSync(ROUTES_DIR)
+  .filter((f) => f.endsWith(".js"))
+  .filter((f) => f !== "index.js")
+  // optional: ignore files starting with "_" or "."
+  .filter((f) => !f.startsWith("_") && !f.startsWith("."))
+  .sort();
+
+const mounted = [];
+
+for (const file of files) {
+  const fullPath = path.join(ROUTES_DIR, file);
+  try {
+    const route = safeRequireRoute(fullPath);
+    if (!route) {
+      // Not an express router export — skip
+      // You can console.warn here if you want.
+      continue;
+    }
+
+    const mountPath = fileToMountPath(file);
+    router.use(mountPath, route);
+    mounted.push({ file, mountPath });
+  } catch (err) {
+    console.error(`[routes] Failed loading ${file}:`, err);
+  }
+}
+
+// Optional debug
+if (process.env.DEBUG_ROUTES === "true") {
+  console.log("Mounted routes:");
+  for (const m of mounted) console.log(`- ${m.mountPath}  (${m.file})`);
+}
+
 module.exports = router;
