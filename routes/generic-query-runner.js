@@ -35,7 +35,7 @@ function buildQuery(table, queryParams) {
 
 /**
  * @swagger
- * /function/{table}:
+ * /{table}:
  *   get:
  *     summary: Fetch records from a table
  *     description: Returns records from the specified table with optional filters, limits, and selected columns.
@@ -112,7 +112,7 @@ router.get("/:table", async (req, res) => {
 
 /**
  * @swagger
- * /function/{table}:
+ * /{table}:
  *   post:
  *     summary: Insert a record into a table
  *     description: Inserts a new record into the specified table.
@@ -173,7 +173,7 @@ router.post("/:table", async (req, res) => {
 });
 /**
  * @swagger
- * /function/{table}:
+ * /{table}:
  *   put:
  *     summary: Update a record in a table
  *     description: Updates an existing record in the specified table. The payload must include the `id` field.
@@ -238,7 +238,7 @@ router.put("/:table", async (req, res) => {
 });
 /**
  * @swagger
- * /function/{table}:
+ * /{table}:
  *   delete:
  *     summary: Delete a record from a table
  *     description: Deletes a record from the specified table by ID.
