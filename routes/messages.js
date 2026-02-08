@@ -12,7 +12,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
 
 /**
  * @swagger
- * /api/conversations/{conversationId}/messages:
+ * /api/messages/{conversationId}/messages:
  *   delete:
  *     summary: Delete all messages in a conversation for the current user
  *     description: |
@@ -52,7 +52,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       500:
  *         description: Server error
  */
-router.delete("/conversations/:conversationId/messages", /* requireAuth, */ async (req, res) => {
+router.delete("/messages/:conversationId/messages", /* requireAuth, */ async (req, res) => {
   try {
     const userId = req.user?.id || req.body?.user_id; // prefer req.user.id
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
