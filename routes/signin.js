@@ -22,10 +22,10 @@ const { Users, PublicUsers } = require("../models");
  *             properties:
  *               email:
  *                 type: string
- *                 example: "user@example.com"
+ *                 example: "zakaria@gmail.com"
  *               password:
  *                 type: string
- *                 example: "P@ssw0rd!"
+ *                 example: "123456"
  *     responses:
  *       200:
  *         description: Signed in successfully

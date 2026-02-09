@@ -10,13 +10,14 @@ const options = {
     },
     servers: [
       {
+        url: "http://13.51.216.122:3000/",
+        description: "Production server",
+      },
+      {
         url: "http://127.0.0.1:3001/",
         description: "Local server",
       },
-      {
-        url: "http://13.51.216.122:3000/",
-        description: "Production server",
-      }
+
     ],
     components: {
       securitySchemes: {
@@ -29,7 +30,7 @@ const options = {
     },
     security: [{ BearerAuth: [] }],
   },
-   apis: ["./routes/*.js"], // 👈 scan all route files
+  apis: ["./routes/*.js"], // 👈 scan all route files
   // apis: ['./routes/admin-analytics.js']
 
 };
