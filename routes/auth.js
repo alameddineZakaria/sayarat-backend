@@ -8,7 +8,7 @@ const { Users, PublicUsers } = require("../models");
 
 /**
  * @swagger
- * /api/auth/signups:
+ * /api/auth/signup:
  *   post:
  *     summary: Create a new user account
  *     description: Creates a user with email/password and returns a JWT token.
@@ -33,7 +33,7 @@ const { Users, PublicUsers } = require("../models");
  *       500:
  *         description: Server error
  */
-router.post("/signups", async (req, res) => {
+router.post("/signup", async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const { email, password, full_name } = req.body;
