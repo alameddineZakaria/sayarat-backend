@@ -10,6 +10,52 @@ const { Users, PublicUsers } = require("../models");
 
 /**
  * @swagger
+ * tags:
+ *   name: Auth
+ *   description: Authentication endpoints
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     SignUpRequest:
+ *       type: object
+ *       required:
+ *         - email
+ *         - password
+ *       properties:
+ *         email:
+ *           type: string
+ *           example: user@example.com
+ *         password:
+ *           type: string
+ *           example: "P@ssw0rd123"
+ *         full_name:
+ *           type: string
+ *           example: "Zakaria Alameddine"
+ *     SignUpResponse:
+ *       type: object
+ *       properties:
+ *         token:
+ *           type: string
+ *           description: JWT access token
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *               example: "d290f1ee-6c54-4b01-90e6-d701748f0851"
+ *             email:
+ *               type: string
+ *               example: "user@example.com"
+ *             full_name:
+ *               type: string
+ *               example: "Zakaria Alameddine"
+ */
+
+/**
+ * @swagger
  * /api/auth/signup:
  *   post:
  *     summary: Create a new user account
@@ -35,6 +81,8 @@ const { Users, PublicUsers } = require("../models");
  *       500:
  *         description: Server error
  */
+
+
 router.post("/signup", async (req, res) => {
     const t = await sequelize.transaction();
     try {
