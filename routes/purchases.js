@@ -12,7 +12,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
 
 /**
  * @swagger
- * /api/purchases/purchases/verify:
+ * /api/purchases/verify:
  *   get:
  *     summary: Verify a purchase by transaction ID
  *     description: |
@@ -52,7 +52,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       500:
  *         description: Server error
  */
-router.get("/purchases/purchases/verify", /* requireAuth, */ async (req, res) => {
+router.get("/purchases/verify", /* requireAuth, */ async (req, res) => {
   try {
     const transactionId = String(req.query.transaction_id || "").trim();
     if (!transactionId) {

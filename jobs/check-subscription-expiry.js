@@ -1,7 +1,6 @@
 const sequelize = require('../config/db');
 const { QueryTypes } = require('sequelize');
-const sendRenewalReminderEmail = require('../services/email.service');
-const sendPushNotification = require('../services/push.service');
+ const sendPushNotification = require('../services/push.service');
 const sendSMS = require('../services/sms.service');
 
 const GRACE_PERIOD_DAYS = 7;
@@ -91,16 +90,7 @@ module.exports = async function checkSubscriptionExpiry() {
         }
       );
 
-      if (sub.email) {
-        await sendRenewalReminderEmail(
-          sub.email,
-          sub.full_name,
-          sub.tier,
-          sub.current_period_end,
-          warningDay,
-          lang
-        );
-      }
+ 
 
       if (sub.push_token) {
         await sendPushNotification(
