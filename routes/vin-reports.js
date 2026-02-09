@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: List VIN report purchases for current user
  *     description: Returns the user's VIN report purchase history ordered by newest first.
- *     tags: [VinReports,queries]
+ *     tags: [VinReports]
  *     security:
  *       - bearerAuth: []
  *     responses:

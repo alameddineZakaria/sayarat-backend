@@ -18,7 +18,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *     description: |
  *       Checks whether a purchase exists for the given transaction/session ID.
  *       Used after payment while waiting for webhook processing.
- *     tags: [Purchases,queries]
+ *     tags: [Purchases]
  *     security:
  *       - bearerAuth: []
  *     parameters:

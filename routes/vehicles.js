@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: Get current user's listings
  *     description: Returns vehicles belonging to the current user, ordered by newest first.
- *     tags: [Vehicles,queries]
+ *     tags: [Vehicles]
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -1,8 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const sequelize = require("../config/db"); // your Sequelize instance
-// const requireAuth = require("../middleware/requireAuth");
+const requireAuth = require("../middleware/requireAuth");
 
+/**
+ * @swagger
+ * tags:
+ *   name: Admin
+ *   description: Admin access and roles
+ */
 /**
  * @swagger
  * tags:
@@ -12,18 +18,32 @@ const sequelize = require("../config/db"); // your Sequelize instance
 
 /**
  * @swagger
- * /api/admin/admin/status:
+ * /api/admin/status:
  *   get:
- *     summary: Check if current user is an admin
+ *     summary: Check if current user is an adminssss
  *     description: |
- *       Returns whether the current user is an active admin and their role.
- *       If the user is not an admin, returns isAdmin=false.
- *     tags: [Admin,queries]
+ *       Checks whether the **authenticated user** is an active admin and returns their role.
+ *
+ *       - The user is normally identified from the **JWT token** (`req.user.id`).
+ *       - A `user_id` query parameter is supported **only as a fallback** if authentication
+ *         middleware is not enabled (not recommended for production).
+ *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: user_id
+ *         required: false
+ *         description: |
+ *           Optional user ID used **only if authentication middleware is not injecting `req.user`**.
+ *           When using JWT authentication, this parameter should NOT be provided.
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *           example: null
  *     responses:
  *       200:
- *         description: Admin status
+ *         description: Admin status for the current user
  *         content:
  *           application/json:
  *             schema:
@@ -37,11 +57,12 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *                   nullable: true
  *                   example: "super_admin"
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (missing or invalid token)
  *       500:
  *         description: Server error
  */
-router.get("/admin/status", /* requireAuth, */ async (req, res) => {
+
+router.get("/status", requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id || req.query.user_id; // prefer req.user.id
     if (!userId) return res.status(401).json({ message: "Unauthorized" });

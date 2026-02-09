@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   post:
  *     summary: Mute a conversation for the current user
  *     description: Creates a row in muted_conversations (idempotent). If already muted, no error.
- *     tags: [MutedConversations,queries]
+ *     tags: [MutedConversations]
  *     security:
  *       - bearerAuth: []
  *     parameters:

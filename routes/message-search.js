@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: Search text messages across user's conversations
  *     description: Searches message content using a case-insensitive partial match (ILIKE). Excludes image/voice pseudo-messages on the server.
- *     tags: [Messages,queries]
+ *     tags: [Messages]
  *     security:
  *       - bearerAuth: []
  *     parameters:

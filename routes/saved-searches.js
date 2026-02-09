@@ -18,7 +18,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *     description: |
  *       Marks a saved search as viewed by resetting `new_matches_since_view`
  *       and updating `last_viewed_at`. The actual search execution is done client-side.
- *     tags: [SavedSearches,queries]
+ *     tags: [SavedSearches]
  *     security:
  *       - bearerAuth: []
  *     parameters:

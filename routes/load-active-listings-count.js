@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: Get active listings count for current user
  *     description: Returns how many active vehicles the current user has.
- *     tags: [Vehicles,queries]
+ *     tags: [Vehicles]
  *     security:
  *       - bearerAuth: []
  *     responses:

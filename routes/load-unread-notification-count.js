@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: Get unread offer notification count
  *     description: Returns the total number of unread offer notifications for the current user.
- *     tags: [Notifications,queries]
+ *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
  *     responses:

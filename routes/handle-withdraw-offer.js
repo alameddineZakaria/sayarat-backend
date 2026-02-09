@@ -18,7 +18,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *     description: |
  *       Withdraws an offer by updating its status to `withdrawn`
  *       and inserting a system message. Runs inside a DB transaction.
- *     tags: [OfferActions,queries]
+ *     tags: [OfferActions]
  *     security:
  *       - bearerAuth: []
  *     parameters:

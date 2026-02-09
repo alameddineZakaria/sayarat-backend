@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: Get phone verification status
  *     description: Returns whether the current user's phone number is verified.
- *     tags: [Users,queries]
+ *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     responses:

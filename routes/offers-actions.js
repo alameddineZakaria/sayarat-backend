@@ -18,7 +18,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *     description: |
  *       Accepts an offer by updating offer status to `accepted` and inserting an `accept` message.
  *       Runs inside a DB transaction.
- *     tags: [OfferActions,queries]
+ *     tags: [OfferActions]
  *     security:
  *       - bearerAuth: []
  *     parameters:

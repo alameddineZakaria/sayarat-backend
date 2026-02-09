@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: Load subscription + billing history
  *     description: Returns the latest subscription and the most recent purchases for the current user.
- *     tags: [Billing,queries]
+ *     tags: [Billing]
  *     security:
  *       - bearerAuth: []
  *     parameters:

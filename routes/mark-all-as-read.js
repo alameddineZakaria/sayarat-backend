@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   patch:
  *     summary: Mark all offer notifications as read
  *     description: Marks all unread offer notifications as read for the current user.
- *     tags: [Notifications,queries]
+ *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
  *     responses:

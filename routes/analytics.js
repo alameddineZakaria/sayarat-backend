@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: Check admin access
  *     description: Checks whether the current user is an active admin.
- *     tags: [Admin,queries]
+ *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
  *     responses:

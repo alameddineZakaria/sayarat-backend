@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   delete:
  *     summary: Unlink a connected account
  *     description: Removes a linked external account (Google, Apple, Facebook, etc.) from the user profile.
- *     tags: [Security,queries]
+ *     tags: [Security]
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -18,7 +18,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *     description: |
  *       Rejects an offer by updating offer status to `rejected` and inserting a `reject` message.
  *       Runs inside a DB transaction.
- *     tags: [OfferActions,queries]
+ *     tags: [OfferActions]
  *     security:
  *       - bearerAuth: []
  *     parameters:

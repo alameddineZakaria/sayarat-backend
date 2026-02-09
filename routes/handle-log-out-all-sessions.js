@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   delete:
  *     summary: End all other sessions
  *     description: Logs the user out from all other devices by terminating all sessions where is_current=false.
- *     tags: [Security,queries]
+ *     tags: [Security]
  *     security:
  *       - bearerAuth: []
  *     responses:

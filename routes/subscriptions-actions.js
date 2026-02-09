@@ -22,7 +22,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       Cancels a subscription for the current user.
  *       - For Stripe subscriptions, you should cancel on Stripe (server-side) then update DB.
  *       - For Apple/Google, cancellation is handled in the store; this endpoint can optionally mark DB as cancelled.
- *     tags: [Subscriptions,queries]
+ *     tags: [Subscriptions]
  *     security:
  *       - bearerAuth: []
  *     parameters:

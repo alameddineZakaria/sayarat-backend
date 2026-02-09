@@ -18,7 +18,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *     description: |
  *       Deletes all messages in the given conversation where the current user is either the sender or the receiver.
  *       This is destructive and cannot be undone.
- *     tags: [Messages,queries]
+ *     tags: [Messages]
  *     security:
  *       - bearerAuth: []
  *     parameters:

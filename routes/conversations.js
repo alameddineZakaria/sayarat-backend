@@ -18,7 +18,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *     description: |
  *       Marks a conversation as deleted for the user by inserting a row into `deleted_conversations`.
  *       Uses ON CONFLICT DO NOTHING to make the operation idempotent (no error if already deleted).
- *     tags: [Conversations,queries]
+ *     tags: [Conversations]
  *     security:
  *       - bearerAuth: []
  *     parameters:

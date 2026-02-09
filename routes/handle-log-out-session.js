@@ -18,7 +18,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *     description: |
  *       Ends a specific session for the current user.
  *       The current session should not be terminated using this endpoint.
- *     tags: [Security,queries]
+ *     tags: [Security]
  *     security:
  *       - bearerAuth: []
  *     parameters:

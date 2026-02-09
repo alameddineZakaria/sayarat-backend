@@ -22,7 +22,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       - buyer (full_name, email) with fallback if missing
  *       - seller (full_name, email) with fallback if missing
  *       - unread_count of unread messages sent by the other party
- *     tags: [Offers,queries]
+ *     tags: [Offers]
  *     security:
  *       - bearerAuth: []
  *     responses:

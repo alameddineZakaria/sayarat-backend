@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: Get current user's preferences
  *     description: Returns the user's preferences. If some fields are NULL, defaults are applied.
- *     tags: [UserPreferences,queries]
+ *     tags: [UserPreferences]
  *     security:
  *       - bearerAuth: []
  *     responses:

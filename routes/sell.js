@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   post:
  *     summary: Create a vehicle listing
  *     description: Creates a vehicle listing for the current user.
- *     tags: [Vehicles,queries]
+ *     tags: [Vehicles]
  *     security:
  *       - bearerAuth: []
  *     requestBody:

@@ -20,7 +20,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       - If muted → unmute (delete row)
  *       - If not muted → mute (insert row)
  *       Operation is idempotent.
- *     tags: [ConversationMute,queries]
+ *     tags: [ConversationMute]
  *     security:
  *       - bearerAuth: []
  *     parameters:

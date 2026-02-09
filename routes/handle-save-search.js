@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   post:
  *     summary: Create a saved search
  *     description: Creates a saved search for the current user (optionally enabling notifications and weekly email digest).
- *     tags: [SavedSearches,queries]
+ *     tags: [SavedSearches]
  *     security:
  *       - bearerAuth: []
  *     requestBody:

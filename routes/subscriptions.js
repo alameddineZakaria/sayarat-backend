@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   get:
  *     summary: Get current active subscription for the user
  *     description: Returns the user's active subscription (if any). If none, returns null.
- *     tags: [Subscriptions,queries]
+ *     tags: [Subscriptions]
  *     security:
  *       - bearerAuth: []
  *     responses:

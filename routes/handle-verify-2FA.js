@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   post:
  *     summary: Disable 2FA
  *     description: Disables two-factor authentication for the current user.
- *     tags: [TwoFactorAuth,queries]
+ *     tags: [TwoFactorAuth]
  *     security:
  *       - bearerAuth: []
  *     responses:

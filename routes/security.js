@@ -20,7 +20,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       - linked accounts
  *       - active sessions (ordered by last_active_at DESC)
  *       - two-factor auth settings (or null if not configured)
- *     tags: [Security,queries]
+ *     tags: [Security]
  *     security:
  *       - bearerAuth: []
  *     responses:

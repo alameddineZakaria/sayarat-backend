@@ -16,7 +16,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *   put:
  *     summary: Save user preferences
  *     description: Creates or updates user preferences using UPSERT on user_id
- *     tags: [UserPreferences,queries]
+ *     tags: [UserPreferences]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
