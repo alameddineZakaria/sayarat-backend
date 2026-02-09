@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const router = express.Router();
-const { Users } = require("../models"); // adjust to your models export
+const { Users, PublicUsers } = require("../models"); // adjust to your models export
 
 /**
  * @swagger
@@ -79,52 +79,38 @@ const { Users } = require("../models"); // adjust to your models export
  *         description: Server error
  */
 router.post("/signup", async (req, res) => {
+    const t = await sequelize.transaction();
     try {
-        const { email, password, full_name } = req.body || {};
+        const { email, password, full_name } = req.body;
 
-        // Basic validation
-        if (!email || !password) {
-            return res.status(400).json({ message: "email and password are required" });
-        }
-        if (typeof password !== "string" || password.length < 6) {
-            return res.status(400).json({ message: "password must be at least 6 characters" });
-        }
+        const id = uuidv4();
+        const encrypted_password = await bcrypt.hash(password, 10);
 
-        // Check existing user
-        const existing = await Users.findOne({ where: { email } });
-        console.log(existing);
-        if (existing) {
-            return res.status(409).json({ message: "Email already registered" });
-        }
+        // 1️⃣ auth.users
+        await Users.create({
+            id,
+            email,
+            encrypted_password,
+            aud: "authenticated",
+            role: "authenticated",
+            created_at: new Date(),
+            updated_at: new Date(),
+        }, { transaction: t });
 
-        // Hash password
-        const password_hash = await bcrypt.hash(password, 10);
-
-        // Create user
-        const user = await Users.create({
+        // 2️⃣ public.users
+        await PublicUsers.create({
+            id,
             email,
             full_name: full_name || "",
-            password_hash,
-            provider: "local",
-        });
+            created_at: new Date(),
+            updated_at: new Date(),
+        }, { transaction: t });
 
-        // Create JWT (optional but typical)
-        const token = jwt.sign(
-            { userId: user.id, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: "30d" }
-        );
-
-        return res.status(201).json({
-            token,
-            user: {
-                id: user.id,
-                email: user.email,
-                full_name: user.full_name,
-            },
-        });
+        await t.commit();
+        return res.status(201).json({ id, email });
     } catch (err) {
-        return res.status(500).json({ message: "Failed to sign up" });
+        await t.rollback();
+        return res.status(500).json({ message: "Signup failed" });
     }
 });
 
