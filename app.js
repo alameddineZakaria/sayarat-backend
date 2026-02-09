@@ -8,7 +8,7 @@ const fs = require('fs');
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
 const sequelize = require('./config/db'); // Sequelize instance
- 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -44,7 +44,6 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/api', require('./routes'));
 app.use('/function', require('./routes/generic-query-runner'));
-
 // Start server after DB connection
 (async () => {
   try {

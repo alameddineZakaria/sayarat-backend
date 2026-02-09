@@ -165,7 +165,7 @@ router.post("/", async (req, res) => {
         expires_at: { [Op.lt]: now },
         expired_notification_sent: false,
       },
-      include: [User, Vehicle],
+      include: [Users, Vehicles],
     });
 
     const expiredResults = [];

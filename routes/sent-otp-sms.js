@@ -1,7 +1,6 @@
 // routes/sent-otp-sms.js
 const express = require('express');
 const fetch = require('node-fetch');
-const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
 const sequelize = require('../config/db');
@@ -80,10 +79,10 @@ router.post('/send-otp-sms', async (req, res) => {
     await sequelize.query(
       `INSERT INTO phone_otps
         (id, phone_number, otp_code, purpose, attempts, max_attempts, is_used, expires_at, created_at, verified)
-       VALUES (:id, :phone, :otp, :purpose, 0, 3, false, :expires, NOW(), false)`,
+       VALUES (  :phone, :otp, :purpose, 0, 3, false, :expires, NOW(), false)`,
       {
         replacements: {
-          id: uuidv4(),
+
           phone: cleanPhone,
           otp: otpCode,
           purpose,

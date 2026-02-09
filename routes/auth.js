@@ -1,60 +1,14 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const sequelize = require("../config/db"); // your Sequelize instance
 
+const sequelize = require("../config/db"); // MUST be same instance used by models
 const router = express.Router();
-const { Users, PublicUsers } = require("../models"); // adjust to your models export
+
+const { Users, PublicUsers } = require("../models");
 
 /**
  * @swagger
- * tags:
- *   name: Auth
- *   description: Authentication endpoints
- */
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     SignUpRequest:
- *       type: object
- *       required:
- *         - email
- *         - password
- *       properties:
- *         email:
- *           type: string
- *           example: user@example.com
- *         password:
- *           type: string
- *           example: "P@ssw0rd123"
- *         full_name:
- *           type: string
- *           example: "Zakaria Alameddine"
- *     SignUpResponse:
- *       type: object
- *       properties:
- *         token:
- *           type: string
- *           description: JWT access token
- *         user:
- *           type: object
- *           properties:
- *             id:
- *               type: string
- *               example: "d290f1ee-6c54-4b01-90e6-d701748f0851"
- *             email:
- *               type: string
- *               example: "user@example.com"
- *             full_name:
- *               type: string
- *               example: "Zakaria Alameddine"
- */
-
-/**
- * @swagger
- * /api/auth/signup:
+ * /api/auth/signups:
  *   post:
  *     summary: Create a new user account
  *     description: Creates a user with email/password and returns a JWT token.
@@ -79,37 +33,62 @@ const { Users, PublicUsers } = require("../models"); // adjust to your models ex
  *       500:
  *         description: Server error
  */
-router.post("/signup", async (req, res) => {
+router.post("/signups", async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const { email, password, full_name } = req.body;
+        if (!email || !password) {
+            await t.rollback();
+            return res.status(400).json({ message: "email and password are required" });
+        }
+
+        // check in auth.users
+        const exists = await Users.findOne({ where: { email }, transaction: t });
+        if (exists) {
+            await t.rollback();
+            return res.status(409).json({ message: "Email already registered" });
+        }
 
         const encrypted_password = await bcrypt.hash(password, 10);
-
+        console.log(Users);
         // 1️⃣ auth.users
-        await Users.create({
-            email,
-            encrypted_password,
-            aud: "authenticated",
-            role: "authenticated",
-            created_at: new Date(),
-            updated_at: new Date(),
-        }, { transaction: t });
-
-        // 2️⃣ public.users
-        await PublicUsers.create({
-            email,
-            full_name: full_name || "",
-            created_at: new Date(),
-            updated_at: new Date(),
-        }, { transaction: t });
+        const authUser = await Users.create(
+            {
+                email,
+                encrypted_password,
+                aud: "authenticated",
+                role: "authenticated",
+                raw_user_meta_data: { full_name: full_name || "" },
+                created_at: new Date(),
+                updated_at: new Date(),
+            },
+            { transaction: t }
+        );
+        console.log(PublicUsers);
+        // 2️⃣ public.users (same id!)
+        await PublicUsers.create(
+            {
+                id: authUser.id, // ✅ CRITICAL
+                email,
+                full_name: full_name || "",
+                created_at: new Date(),
+                updated_at: new Date(),
+            },
+            { transaction: t }
+        );
 
         await t.commit();
-        return res.status(201).json({ email });
+
+        return res.status(201).json({
+            id: authUser.id,
+            email,
+            full_name: full_name || "",
+        });
     } catch (err) {
         await t.rollback();
-        return res.status(500).json({ message: "Signup failed" });
+        return res.status(500).json({ message: "Signup failed", error: err.message });
     }
 });
+
 
 module.exports = router;

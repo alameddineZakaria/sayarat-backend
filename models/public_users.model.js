@@ -1,7 +1,7 @@
 // models/public-users.model.js
 module.exports = (sequelize, DataTypes) => {
   const PublicUsers = sequelize.define(
-    "Users",
+    "PublicUsers",
     {
       id: {
         type: DataTypes.UUID,
