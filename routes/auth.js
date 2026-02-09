@@ -37,20 +37,27 @@ router.post("/signup", async (req, res) => {
     const t = await sequelize.transaction();
     try {
         const { email, password, full_name } = req.body;
+
         if (!email || !password) {
             await t.rollback();
-            return res.status(400).json({ message: "email and password are required" });
+            return res.status(400).json({
+                data: null,
+                error: "email and password are required",
+            });
         }
 
         // check in auth.users
         const exists = await Users.findOne({ where: { email }, transaction: t });
         if (exists) {
             await t.rollback();
-            return res.status(409).json({ message: "Email already registered" });
+            return res.status(409).json({
+                data: null,
+                error: "Email already registered",
+            });
         }
 
         const encrypted_password = await bcrypt.hash(password, 10);
-        console.log(Users);
+
         // 1️⃣ auth.users
         const authUser = await Users.create(
             {
@@ -64,11 +71,11 @@ router.post("/signup", async (req, res) => {
             },
             { transaction: t }
         );
-        console.log(PublicUsers);
-        // 2️⃣ public.users (same id!)
+
+        // 2️⃣ public.users
         await PublicUsers.create(
             {
-                id: authUser.id, // ✅ CRITICAL
+                id: authUser.id,
                 email,
                 full_name: full_name || "",
                 created_at: new Date(),
@@ -80,15 +87,22 @@ router.post("/signup", async (req, res) => {
         await t.commit();
 
         return res.status(201).json({
-            id: authUser.id,
-            email,
-            full_name: full_name || "",
+            data: {
+                id: authUser.id,
+                email,
+                full_name: full_name || "",
+            },
+            error: null,
         });
     } catch (err) {
         await t.rollback();
-        return res.status(500).json({ message: "Signup failed", error: err.message });
+        return res.status(500).json({
+            data: null,
+            error: err.message || "Signup failed",
+        });
     }
 });
+
 
 
 module.exports = router;
