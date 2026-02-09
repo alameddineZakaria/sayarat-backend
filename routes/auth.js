@@ -1,5 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
 
 const sequelize = require("../config/db"); // MUST be same instance used by models
 const router = express.Router();
@@ -102,6 +104,7 @@ router.post("/signup", async (req, res) => {
         });
     }
 });
+
 
 
 
