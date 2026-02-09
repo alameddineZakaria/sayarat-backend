@@ -1,6 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const sequelize = require("../config/db"); // your Sequelize instance
 
 const router = express.Router();
 const { Users, PublicUsers } = require("../models"); // adjust to your models export
@@ -83,12 +84,10 @@ router.post("/signup", async (req, res) => {
     try {
         const { email, password, full_name } = req.body;
 
-        const id = uuidv4();
         const encrypted_password = await bcrypt.hash(password, 10);
 
         // 1️⃣ auth.users
         await Users.create({
-            id,
             email,
             encrypted_password,
             aud: "authenticated",
@@ -99,7 +98,6 @@ router.post("/signup", async (req, res) => {
 
         // 2️⃣ public.users
         await PublicUsers.create({
-            id,
             email,
             full_name: full_name || "",
             created_at: new Date(),
@@ -107,7 +105,7 @@ router.post("/signup", async (req, res) => {
         }, { transaction: t });
 
         await t.commit();
-        return res.status(201).json({ id, email });
+        return res.status(201).json({ email });
     } catch (err) {
         await t.rollback();
         return res.status(500).json({ message: "Signup failed" });
