@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const sequelize = require("../config/db"); // your Sequelize instance
-// const requireAuth = require("../middleware/requireAuth"); // if you have it
+const requireAuth = require("../middleware/requireAuth"); // if you have it
 
 /**
  * @swagger
@@ -84,7 +84,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       500:
  *         description: Server error
  */
-router.get("/search", /* requireAuth, */ async (req, res) => {
+router.get("/search", requireAuth, async (req, res) => {
   try {
     // Auth: prefer req.user.id (from your auth middleware)
     const userId = req.user?.id || req.query.user_id;

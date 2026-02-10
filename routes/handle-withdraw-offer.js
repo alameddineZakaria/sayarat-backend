@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const sequelize = require("../config/db"); // your Sequelize instance
-// const requireAuth = require("../middleware/requireAuth");
+const requireAuth = require("../middleware/requireAuth");
 
 /**
  * @swagger
@@ -64,7 +64,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       500:
  *         description: Server error
  */
-router.post("/offers/:offerId/withdraw", /* requireAuth, */ async (req, res) => {
+router.post("/offers/:offerId/withdraw", requireAuth, async (req, res) => {
   const trx = await sequelize.transaction();
   try {
     const userId = req.user?.id || req.body?.user_id;
@@ -162,7 +162,7 @@ router.post("/offers/:offerId/withdraw", /* requireAuth, */ async (req, res) => 
     });
   } catch (err) {
     console.error("POST /api/offers/:offerId/withdraw error:", err);
-    try { await trx.rollback(); } catch (_) {}
+    try { await trx.rollback(); } catch (_) { }
     return res.status(500).json({ message: "Internal server error" });
   }
 });

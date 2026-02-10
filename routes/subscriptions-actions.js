@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const sequelize = require("../config/db"); // your Sequelize instance
-// const requireAuth = require("../middleware/requireAuth");
+const requireAuth = require("../middleware/requireAuth");
 
 // You can inject your Stripe cancellation service here
 // const { cancelStripeSubscription } = require("../services/stripe");
@@ -66,7 +66,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       500:
  *         description: Server error
  */
-router.post("/subscriptions/:subscriptionId/cancel", /* requireAuth, */ async (req, res) => {
+router.post("/subscriptions/:subscriptionId/cancel", requireAuth, async (req, res) => {
   const trx = await sequelize.transaction();
   try {
     const userId = req.user?.id || req.body?.user_id; // prefer req.user.id

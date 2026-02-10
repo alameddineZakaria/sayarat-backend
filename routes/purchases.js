@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const sequelize = require("../config/db"); // your Sequelize instance
-// const requireAuth = require("../middleware/requireAuth");
+const requireAuth = require("../middleware/requireAuth");
 
 /**
  * @swagger
@@ -52,7 +52,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       500:
  *         description: Server error
  */
-router.get("/purchases/verify", /* requireAuth, */ async (req, res) => {
+router.get("/purchases/verify", requireAuth, async (req, res) => {
   try {
     const transactionId = String(req.query.transaction_id || "").trim();
     if (!transactionId) {

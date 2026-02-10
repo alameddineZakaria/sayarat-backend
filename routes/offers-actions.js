@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const sequelize = require("../config/db"); // your Sequelize instance
-// const requireAuth = require("../middleware/requireAuth");
+const requireAuth = require("../middleware/requireAuth");
 
 /**
  * @swagger
@@ -68,7 +68,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       500:
  *         description: Server error
  */
-router.post("/offers/:offerId/accept", /* requireAuth, */ async (req, res) => {
+router.post("/offers/:offerId/accept", requireAuth, async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const userId = req.user?.id || req.body?.user_id; // prefer req.user.id

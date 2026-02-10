@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const sequelize = require("../config/db"); // your Sequelize instance
-// const requireAuth = require("../middleware/requireAuth");
+const requireAuth = require("../middleware/requireAuth");
 
 /**
  * @swagger
@@ -51,7 +51,7 @@ const sequelize = require("../config/db"); // your Sequelize instance
  *       500:
  *         description: Server error
  */
-router.delete("/security/sessions/:sessionId", /* requireAuth, */ async (req, res) => {
+router.delete("/security/sessions/:sessionId", requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id || req.body?.user_id; // prefer req.user.id
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
