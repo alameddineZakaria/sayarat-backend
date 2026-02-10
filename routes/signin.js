@@ -49,7 +49,6 @@ router.post("/signin", async (req, res) => {
 
     // 1) Find user in auth.users
     const user = await Users.findOne({ where: { email } });
-    console.log(user)
 
     // Don't reveal if email exists or not
     if (!user || !user.encrypted_password) {

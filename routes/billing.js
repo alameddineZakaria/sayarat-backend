@@ -12,7 +12,7 @@ const requireAuth = require("../middleware/requireAuth");
 
 /**
  * @swagger
- * /api/billing/billing/subscription-data:
+ * /api/billing/subscription-data:
  *   get:
  *     summary: Load subscription + billing history
  *     description: Returns the latest subscription and the most recent purchases for the current user.
@@ -51,7 +51,7 @@ const requireAuth = require("../middleware/requireAuth");
  *       500:
  *         description: Server error
  */
-router.get("/billing/subscription-data", requireAuth, async (req, res) => {
+router.get("/subscription-data", requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id || req.query.user_id; // prefer req.user.id
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
